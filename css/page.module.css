@@ -1,198 +1,310 @@
 .chatPage {
+
   height:100vh;
+
   display:flex;
+
   flex-direction:column;
+
   background:#fff;
+
 }
+
+
+/* 顶部 */
 
 .chatHeader {
-  height:64px;
-  border-bottom:1px solid #eee;
+
+  height:70px;
+
   display:flex;
-  flex-direction:column;
-  justify-content:center;
-  padding-left:24px;
-}
 
-.chatHeader h1 {
-  margin:0;
-  font-size:18px;
-  font-weight:600;
-}
-
-.chatHeader span {
-  font-size:12px;
-  color:#777;
-}
-
-.messageArea {
-  flex:1;
-  overflow-y:auto;
-  display:flex;
-  justify-content:center;
-  padding:30px 20px;
-}
-
-.messages {
-  width:100%;
-  max-width:768px;
-}
-
-.userMessage,
-.aiMessage {
-  display:flex;
-  gap:12px;
-  margin-bottom:24px;
-  align-items:flex-start;
-}
-
-.userMessage {
-  flex-direction:row-reverse;
-}
-
-.avatar {
-  width:32px;
-  height:32px;
-  border-radius:50%;
-  display:flex;
   align-items:center;
-  justify-content:center;
-  background:#ddd;
-  font-size:12px;
-  flex-shrink:0;
-}
 
-.content {
-  max-width:650px;
-  padding:12px 16px;
-  border-radius:14px;
-  line-height:1.6;
-  font-size:15px;
-}
+  justify-content:space-between;
 
-.userMessage .content {
-  background:#1677ff;
-  color:white;
-}
+  padding:0 30px;
 
-.aiMessage .content {
-  background:#f7f7f8;
-  color:#222;
-}
-
-.inputArea {
-  border-top:1px solid #eee;
-  padding:20px;
-  display:flex;
-  justify-content:center;
-}
-
-.chatHeader {
-  height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 30px;
-  border-bottom: 1px solid #eee;
-  background: white;
-}
-
-
-.chatHeader h1 {
-  font-size: 24px;
-  margin: 0;
-}
-
-
-.chatHeader span {
-  color: #888;
-}
-
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-.loginButton {
-
-  padding: 8px 20px;
-
-  border-radius: 20px;
-
-  border: none;
-
-  background: #2563eb;
-
-  color:white;
-
-  font-size:14px;
-
-  cursor:pointer;
-
-  transition:all 0.2s;
-
-}
-
-
-.loginButton:hover {
-
-  background:#1d4ed8;
-
-  transform:translateY(-1px);
-
-}
-
-.logoutButton {
-
-  padding:8px 20px;
-
-  border-radius:20px;
-
-  border:1px solid #ef4444;
+  border-bottom:1px solid #eee;
 
   background:white;
 
-  color:#ef4444;
-
-  font-size:14px;
-
-  cursor:pointer;
-
-  transition:all 0.2s;
-
 }
 
 
-.logoutButton:hover {
-
-  background:#ef4444;
-
-  color:white;
-
-}
-.userInfo {
+.titleArea {
 
   display:flex;
 
-  align-items:center;
-
-  gap:8px;
-
-  padding:6px 12px;
-
-  border-radius:20px;
-
-  background:#f1f5f9;
-
-  color:#475569;
-
-  font-size:14px;
+  flex-direction:column;
 
 }
 
 
-.userIcon {
+.chatHeader h1 {
 
-  font-size:16px;
+  margin:0;
+
+  font-size:24px;
+
+  font-weight:700;
 
 }
+
+
+.titleArea span {
+
+  margin-top:4px;
+
+  font-size:13px;
+
+  color:#888;
+
+}
+
+
+
+
+
+/* 登录区域 */
+
+
+.headerRight {
+
+ display:flex;
+
+ align-items:center;
+
+ gap:15px;
+
+}
+
+
+
+.loginButton {
+
+
+padding:8px 20px;
+
+border-radius:20px;
+
+border:none;
+
+background:#2563eb;
+
+color:white;
+
+cursor:pointer;
+
+}
+
+
+
+.logoutButton {
+
+
+padding:8px 20px;
+
+border-radius:20px;
+
+border:1px solid #ef4444;
+
+background:white;
+
+color:#ef4444;
+
+cursor:pointer;
+
+}
+
+
+
+
+.userInfo {
+
+
+display:flex;
+
+align-items:center;
+
+gap:8px;
+
+background:#f1f5f9;
+
+padding:8px 15px;
+
+border-radius:20px;
+
+font-size:14px;
+
+color:#475569;
+
+
+}
+
+
+
+
+
+/* 消息区域 */
+
+
+.messageArea {
+
+
+flex:1;
+
+overflow-y:auto;
+
+display:flex;
+
+justify-content:center;
+
+padding:30px;
+
+
+}
+
+
+
+.messages {
+
+
+width:100%;
+
+max-width:768px;
+
+
+}
+
+
+
+
+.userMessage,
+.aiMessage {
+
+
+display:flex;
+
+gap:12px;
+
+margin-bottom:24px;
+
+}
+
+
+
+
+.userMessage {
+
+
+flex-direction:row-reverse;
+
+}
+
+
+
+.avatar {
+
+
+width:32px;
+
+height:32px;
+
+border-radius:50%;
+
+background:#ddd;
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+}
+
+
+
+
+
+.content {
+
+
+max-width:650px;
+
+padding:12px 16px;
+
+border-radius:14px;
+
+line-height:1.6;
+
+font-size:15px;
+
+
+}
+
+
+
+.userMessage .content {
+
+background:#1677ff;
+
+color:white;
+
+}
+
+
+
+.aiMessage .content {
+
+background:#f7f7f8;
+
+color:#222;
+
+}
+
+
+
+
+
+/* 输入区域 */
+
+
+.inputArea {
+
+
+border-top:1px solid #eee;
+
+padding:15px 30px 25px;
+
+
+display:flex;
+
+flex-direction:column;
+
+align-items:center;
+
+
+gap:12px;
+
+
+background:white;
+
+
+}
+
+
+
+
+
+.modeArea {
+
+
+display:flex;
+
+justify-content:center;
+
+}
+
+
+

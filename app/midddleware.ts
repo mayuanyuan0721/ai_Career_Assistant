@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
 
 
 export async function middleware(req:NextRequest){
@@ -36,17 +36,19 @@ export async function middleware(req:NextRequest){
     );
 
 
-    await supabase.auth.getUser();
+   const {data:{user}}= await supabase.auth.getUser();
+   if(!user){
+    return NextResponse.redirect(new URL("/login",req.url))
 
-
-    return response;
+   }
+return response;
 
 }
 
 
 export const config={
     matcher:[
-        "/api/:path*",
-        "/chat"
+        "/chat/:path*",
+         "/api/:path*"
     ]
 }

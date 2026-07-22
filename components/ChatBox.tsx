@@ -5,16 +5,20 @@ import InputBox from "@/components/InputBox";
 import MessageList from "./MessageList";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import {Mode} from "@/types/chat"
+import ModeSelector from "./ModeSelector"
 
 interface Props {
   conversationId: string;
   onTitleUpdate:()=>void;
   onLogin:()=>void;
   outLogout:()=>void;
-  user:any
+  user:any;
+  mode:Mode;
+  setMode:(str:string)=>void;
 }
   
-export default function ChatBox({ conversationId,onTitleUpdate,onLogin,outLogout,user }: Props) {
+export default function ChatBox({ conversationId,onTitleUpdate,onLogin,outLogout,user,mode,setMode }: Props) {
   const { messages, sendMessage, status,setMessages } = useChat({
     
     id: conversationId,
@@ -24,10 +28,13 @@ export default function ChatBox({ conversationId,onTitleUpdate,onLogin,outLogout
     );
     onTitleUpdate();
  },
+
+
     transport: new DefaultChatTransport({
       api: "/api/chat",
       fetch: async (url, options) => {
         console.log("发送时 conversationId:", conversationId);
+        console.log("发送时 mode:", mode);
         let body = {};
         //这个叫可选链
         if (options?.body) {
@@ -39,7 +46,8 @@ export default function ChatBox({ conversationId,onTitleUpdate,onLogin,outLogout
           ...options,
           body: JSON.stringify({
             ...body,
-            conversationId
+            conversationId,
+             mode
           })
         })
       }
@@ -109,7 +117,7 @@ export default function ChatBox({ conversationId,onTitleUpdate,onLogin,outLogout
     <div className={styles.chatPage}>
       <header className={styles.chatHeader}>
         <h1>AI Assistant</h1>
-        <span>DeepSeek · Streaming Chat</span>
+   
   
 <div className={styles.headerRight}>
 
@@ -150,6 +158,8 @@ export default function ChatBox({ conversationId,onTitleUpdate,onLogin,outLogout
       </main>
 
       <footer className={styles.inputArea}>
+        <ModeSelector mode={mode} setMode={setMode} />
+
         <InputBox onSend={handleSend} disabled={isLoading} />
       </footer>
     </div>

@@ -4,6 +4,9 @@ import { streamText,generateText  } from 'ai';
 import { createDeepSeek } from '@ai-sdk/deepseek'; // 推荐用专用包
 import {createClient} from "@/lib/supabase/server"
 import { log } from 'console';
+import {Mode} from "@/types/chat"
+import {resumeOptimizePrompt,jobMatchPrompt,interviewPrompt} from "@/lib/prompts/resume"
+
 
 
 const deepseek = createDeepSeek({
@@ -35,7 +38,8 @@ if(!user){
  )
 }
   try {
-    const { messages, conversationId } = await request.json();
+    const { messages, conversationId,mode } = await request.json();
+
     console.log(
       JSON.stringify(conversationId)
     );
@@ -48,8 +52,22 @@ if(!user){
           .map((p: any) => p.text)
           .join("") || ""
     }));
-    const lastMessage = messages[messages.length - 1];
 
+    const lastMessage = messages[messages.length - 1];
+    let  systemPrompt="";
+    switch(mode){
+      case "resume_optimize":
+        systemPrompt =resumeOptimizePrompt;
+        break;
+      case "job_match":
+        systemPrompt =jobMatchPrompt;
+        break;
+      case "interview":
+        systemPrompt =interviewPrompt;
+        break;
+      default:
+        systemPrompt ="";
+    }
     //这个是给数据库用的数据处理
     /**const userText =modelMessages[modelMessages.length-1].content;
      */
@@ -95,8 +113,10 @@ if(!user){
     }
 
     const result =  streamText({
-      model: deepseek('deepseek-chat'),
-      messages: modelMessages,
+        model: deepseek('deepseek-chat'),
+        instructions: systemPrompt,
+        messages: modelMessages,
+  
       onFinish: async ({ text }) => {
         await supabase
           .from("messages")

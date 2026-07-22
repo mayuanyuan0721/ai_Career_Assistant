@@ -1,15 +1,12 @@
-"use client";
+import ChatLayout from "@/components/ChatLayout"
 
 
-import ChatLayout from "@/components/ChatLayout";
+export default function ChatPage(){
 
+    return (
 
-export default function Home(){
+        <ChatLayout/>
 
-return (
-
-<ChatLayout/>
-
-)
+    )
 
 }

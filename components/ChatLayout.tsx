@@ -3,6 +3,9 @@ import Sidebar from "./Sidebar"
 import ChatBox from "./ChatBox"
 import { useEffect, useState } from "react"
 import AuthModal from "./AuthModal"
+import {Mode} from "@/types/chat"
+
+
 
 
 export default function ChatLayout() {
@@ -11,6 +14,7 @@ export default function ChatLayout() {
   const [showAuth, setShowAuth] = useState(false);
   const [user, setUser] = useState(null);
   const [checked,setChecked]=useState(false);
+  const [mode,setMode]=useState<Mode>("resume_optimize");
    async function handleLogout() {
         const res = await fetch("/api/auth/layout",{
     method:"POST",
@@ -78,6 +82,8 @@ export default function ChatLayout() {
 
       <div style={{ flex: 1 }}>
         <ChatBox 
+        setMode={setMode}
+        mode={mode}
         user={user}
         outLogout={handleLogout}
         conversationId={conversationId}

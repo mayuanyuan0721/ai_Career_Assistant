@@ -1,0 +1,1 @@
+export type Mode="resume_optimize" | "job_match" | "interview"

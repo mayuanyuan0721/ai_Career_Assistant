@@ -26,7 +26,7 @@ return (
     <div>
         {
              modes.map(item=>(
-        <button  onClick={()=>{setMode(item.value)}} key={item.value as Mode} style={{marginRight:"10px",
+        <button  onClick={()=>{setMode(item.value as Mode)}} key={item.value as Mode} style={{marginRight:"10px",
             fontWeight:mode===item.value?"bold":"normal"}}>
             {item.label}
         </button>

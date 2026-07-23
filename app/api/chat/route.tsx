@@ -1,28 +1,10 @@
 import { NextRequest } from 'next/server';
-import https from 'https';
 import { streamText,generateText  } from 'ai';
-import { createDeepSeek } from '@ai-sdk/deepseek'; // 推荐用专用包
 import {createClient} from "@/lib/supabase/server"
-import { log } from 'console';
-import {Mode} from "@/types/chat"
 import {resumeOptimizePrompt,jobMatchPrompt,interviewPrompt} from "@/lib/prompts/resume"
+import {deepseek} from "@/lib/deepseek/ai"
 
 
-
-const deepseek = createDeepSeek({
-  baseURL: 'https://api.deepseek.com/v1',
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  fetch: (url, options) => {
-    const agent = new https.Agent({
-      rejectUnauthorized: false,
-      secureProtocol: 'TLSv1_2_method',
-      ciphers: 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-DSS-AES256-GCM-SHA384',
-      minVersion: 'TLSv1.2',
-      maxVersion: 'TLSv1.3',
-    });
-    return fetch(url, { ...options, agent } as any);
-  }
-});
 
 
 
@@ -38,7 +20,7 @@ if(!user){
  )
 }
   try {
-    const { messages, conversationId,mode } = await request.json();
+    const { messages, conversationId,mode, resume } = await request.json();
 
     console.log(
       JSON.stringify(conversationId)
@@ -52,6 +34,9 @@ if(!user){
           .map((p: any) => p.text)
           .join("") || ""
     }));
+
+    const resumeContext = resume ?`用户简历:${JSON.stringify(resume)}`:"";
+
 
     const lastMessage = messages[messages.length - 1];
     let  systemPrompt="";

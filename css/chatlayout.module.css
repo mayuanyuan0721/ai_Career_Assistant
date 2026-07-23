@@ -1,0 +1,34 @@
+.layout{
+
+display:flex;
+
+height:100vh;
+
+}
+
+
+.sidebar{
+
+width:260px;
+
+border-right:1px solid #eee;
+
+}
+
+
+.chat{
+
+flex:1;
+
+}
+
+
+.resume{
+
+width:300px;
+
+border-left:1px solid #eee;
+
+padding:20px;
+
+}

@@ -4,8 +4,8 @@ import ChatBox from "./ChatBox"
 import { useEffect, useState } from "react"
 import AuthModal from "./AuthModal"
 import {Mode} from "@/types/chat"
-
-
+import ResumePanel  from "./Resume/ResumePanel"
+import styles from "@/css/chatlayout.module.css"
 
 
 export default function ChatLayout() {
@@ -15,6 +15,7 @@ export default function ChatLayout() {
   const [user, setUser] = useState(null);
   const [checked,setChecked]=useState(false);
   const [mode,setMode]=useState<Mode>("resume_optimize");
+  const [resume,setResume]=useState(null)
    async function handleLogout() {
         const res = await fetch("/api/auth/layout",{
     method:"POST",
@@ -48,9 +49,8 @@ export default function ChatLayout() {
 
   }
   return (
-    <div style={{
-      display: "flex"
-    }}>
+    <div className={styles.layout} >
+      <div className={styles.sidebar}>
       <Sidebar
         isLogin={!!user}
         refresh={refresh}
@@ -78,10 +78,11 @@ export default function ChatLayout() {
             setConversationId(id);
           }
         } />
+</div>
 
-
-      <div style={{ flex: 1 }}>
+     <div className={styles.chat}>
         <ChatBox 
+        resume={resume}
         setMode={setMode}
         mode={mode}
         user={user}
@@ -92,10 +93,21 @@ export default function ChatLayout() {
             setShowAuth(true)
           }}
         />
-        {
-          showAuth && <AuthModal onClose={() => { setShowAuth(false) }} />
-        }
+      
       </div>
+
+      <div className={styles.resume}>
+        <ResumePanel resume={resume}  onResumeChange={setResume}/>
+        </div>
+
+         {
+    showAuth &&
+    <AuthModal 
+      onClose={()=>{
+        setShowAuth(false)
+      }}
+    />
+  }
     </div>
   )
 }

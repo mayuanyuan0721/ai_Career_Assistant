@@ -18,8 +18,6 @@ export async function POST(req:NextRequest){
     })
 
      const jsonData=JSON.parse(result.text);
-
-
     return Response.json({
         success:true,
         data:jsonData,

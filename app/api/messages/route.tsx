@@ -21,4 +21,39 @@ export async function GET(req:NextRequest) {
     return Response.json({
         messages:data
     });
+
+
+
+}
+
+
+export async function POST(req:Request){
+    const supabase=await createClient();
+    const body=await req.json();
+    console.log("保存AI发送消息",body);
+    const {conversationId,role,content}=body;
+    const {data,error}=await supabase
+    .from("messages")
+    .insert({
+        conversation_id:conversationId,
+        role,
+        content
+    })
+    .select()
+    .single();
+    if(error){
+        console.log(error);
+        return Response.json(
+            {
+                error:error.message
+            },{
+                status:500
+            }
+        )
+        
+    }
+
+    return Response.json({
+        data
+    })
 }

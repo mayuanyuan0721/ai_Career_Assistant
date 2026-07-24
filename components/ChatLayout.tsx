@@ -4,8 +4,8 @@ import ChatBox from "./ChatBox"
 import { useEffect, useState } from "react"
 import AuthModal from "./AuthModal"
 import {Mode} from "@/types/chat"
-import ResumePanel  from "./Resume/ResumePanel"
 import styles from "@/css/chatlayout.module.css"
+import RightPanel from "./RightPanel"
 
 
 export default function ChatLayout() {
@@ -15,7 +15,9 @@ export default function ChatLayout() {
   const [user, setUser] = useState(null);
   const [checked,setChecked]=useState(false);
   const [mode,setMode]=useState<Mode>("resume_optimize");
-  const [resume,setResume]=useState(null)
+  const [resume,setResume]=useState(null);
+  const [resumeAnalysis,setResumeAnalysis]=useState("");
+  const [analyzing,setAnalyzing]=useState(false);
    async function handleLogout() {
         const res = await fetch("/api/auth/layout",{
     method:"POST",
@@ -26,28 +28,52 @@ export default function ChatLayout() {
       }
     }
   useEffect(() => {
-   
     async function checkUser() {
       const res=await fetch(
         "/api/auth/user"
-      );
+      )
       const data= await res.json();
       if(data.user){
         setUser(data.user)
+        await createConversation();
       }
        setChecked(true);
     }
-     checkUser();
-    if (!conversationId) {
-      setConversationId(crypto.randomUUID());
-    }
+    checkUser();
+    
+
   }, []);
   const handleRefresh = () => {
     setRefresh(
       pre => pre + 1
     );
-
   }
+  //进入新的页面的时候就相当于新增了ID
+  async function createConversation() {
+      const id = crypto.randomUUID();
+    const res=await fetch(
+      "/api/conversation",
+      {
+        method:"POST",
+        headers:{
+              "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                id
+            })
+      }
+    );
+    const data=await res.json();
+    console.log("创建会话:",data);
+     if(data.data){
+
+    setConversationId(
+      data.data.id
+    );
+
+  }}
+
+
   return (
     <div className={styles.layout} >
       <div className={styles.sidebar}>
@@ -66,8 +92,14 @@ export default function ChatLayout() {
               setRefresh(pre => pre + 1)
             }
             if (id === conversationId) {
-              const newId = crypto.randomUUID();
-              setConversationId(newId);
+              const res=await fetch(
+                "/api/conversation",
+                {
+                  method:"POST"
+                }
+              );
+              const data=await res.json();
+              setConversationId( data.data.id);
             }
           }
         }
@@ -83,6 +115,7 @@ export default function ChatLayout() {
      <div className={styles.chat}>
         <ChatBox 
         resume={resume}
+        resumeAnalysis={resumeAnalysis}
         setMode={setMode}
         mode={mode}
         user={user}
@@ -97,7 +130,14 @@ export default function ChatLayout() {
       </div>
 
       <div className={styles.resume}>
-        <ResumePanel resume={resume}  onResumeChange={setResume}/>
+        <RightPanel
+        conversationId={conversationId}
+        mode={mode}
+        resume={resume}
+        analyzing={analyzing}
+        onAnalysis={setResumeAnalysis} 
+        onResumeChange={setResume} 
+        onAnalyzingChange={setAnalyzing}/>
         </div>
 
          {

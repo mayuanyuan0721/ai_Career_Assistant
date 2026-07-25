@@ -1,44 +1,58 @@
-import {deepseek} from "@/lib/deepseek/ai"
-import { generateText } from "ai";
-import {resumeOptimizePrompt} from "@/lib/prompts/resume"
+﻿import { createClient } from "@/lib/supabase/server";
+import { deepseek } from "@/lib/deepseek/ai";
+import { profilePrompt } from "@/lib/prompts/resume";
+import { generateText } from "ai"
 
 export async function POST(req: Request) {
-    const body = await req.json();
-    const resume = body.resume;
-    const prompt = `你是一名资深前端面试官。
-    请分析下面这份简历。
-    重点关注：
-    1. 技术栈是否合理
-    2. 项目经历是否有亮点
-    3. 项目描述是否符合STAR原则
-    4. 是否体现技术深度
-    5. 给出具体修改建议
-    输出：
-   ## 简历总体评价
-   ## 存在的问题
-   ## 修改建议
-        简历:${JSON.stringify(resume)}`;
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            return Response.json({ error: "Unauthorized" }, { status: 401 })
+        }
 
+        const { resume } = await req.json();
 
-    const result = await generateText({
-        model: deepseek("deepseek-chat"), prompt
-    })
+        console.log("[PROFILE] Generating profile for user:", user.id);
 
-    const clean=result.text.replace(
-         /```json/g,
-        ""
-    )
-    .replace(
-          /```/g,
-        ""
-    )
-    .trim();
+        const result = await generateText({
+            model: deepseek("deepseek-v4-flash"),
+            prompt: profilePrompt + JSON.stringify(resume)
+        });
 
-    const profile=JSON.parse(clean);
-    console.log("用户画像",profile);
-    return Response.json({
-        data:profile
-    })
-    
+        // Clean AI response - remove markdown code blocks if present
+        const cleanText = result.text
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim();
 
+        let profile;
+        try {
+            profile = JSON.parse(cleanText);
+        } catch (parseErr) {
+            console.error("[PROFILE] JSON parse failed, raw text:", result.text);
+            return Response.json({ error: "AI returned invalid JSON" }, { status: 500 });
+        }
+
+        console.log("[PROFILE] Parsed profile:", profile);
+
+        // Upsert - use only 'id' as primary key (id = user.id), no separate user_id column
+        const { error } = await supabase
+            .from("profiles")
+            .upsert({
+                id: user.id,
+                profile: profile
+            });
+
+        if (error) {
+            console.error("[PROFILE] Upsert error:", error);
+            return Response.json({ error: error.message }, { status: 500 })
+        }
+
+        console.log("[PROFILE] Saved successfully");
+        return Response.json({ profile });
+    } catch (err: any) {
+        console.error("[PROFILE] Unexpected error:", err?.message || err);
+        return Response.json({ error: "Profile generation failed" }, { status: 500 })
+    }
 }

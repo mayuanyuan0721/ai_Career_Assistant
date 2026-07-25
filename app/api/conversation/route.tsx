@@ -1,48 +1,101 @@
-import { createClient } from "@/lib/supabase/server"
+import {createClient} from "@/lib/supabase/server"
 
 
-export async function POST(req: Request) {
+export async function POST(req:Request){
 
-    const supabase = await createClient();
-
-
-    const { id } = await req.json();
+try{
 
 
-    const { data, error } = await supabase
-        .from("conversations")
-        .insert({
-            id,
-            title:"新聊天"
-        })
-        .select()
-        .single();
+const supabase=await createClient();
 
 
-    console.log(
-        "创建结果:",
-        data,
-        error
-    );
+const {
+ data:{
+    user
+ }
+}=await supabase.auth.getUser();
 
 
-    if(error){
 
-        return Response.json(
-            {
-                error:error.message
-            },
-            {
-                status:500
-            }
-        )
-    }
+if(!user){
+
+ return Response.json(
+ {
+  error:"未登录"
+ },
+ {
+  status:401
+ }
+ )
+
+}
 
 
-    return Response.json({
 
-        data
+const {
+ data,
+ error
+}=await supabase
+.from("conversations")
+.insert({
 
-    });
+    title:"新对话",
+
+    user_id:user.id
+
+})
+.select()
+.single();
+
+
+
+if(error){
+
+ console.log(
+ "创建conversation失败:",
+ error
+ );
+
+
+ return Response.json(
+ {
+  error:error.message
+ },
+ {
+  status:500
+ }
+ )
+
+}
+
+
+
+return Response.json({
+
+ data
+
+});
+
+
+}catch(error:any){
+
+
+console.log(
+ "conversation接口错误:",
+ error
+);
+
+
+return Response.json(
+{
+ error:error.message
+},
+{
+ status:500
+}
+)
+
+
+}
 
 }

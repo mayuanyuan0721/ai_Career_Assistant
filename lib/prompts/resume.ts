@@ -79,7 +79,7 @@ xxx
 `;
 
 
-export const resumeParsePrompt=`
+export const resumeParsePrompt =`
 你是一名专业的简历解析助手。
 
 
@@ -97,29 +97,72 @@ export const resumeParsePrompt=`
 
 
 格式:
-
-{
- "basic":{
-   "name":"",
-   "email":"",
-   "phone":""
- },
-
- "skills":[],
-
- "projects":[
-   {
-    "name":"",
-    "description":"",
-    "techStack":[]
-   }
- ],
-
- "education":[]
-
-}
+{ "basic":{ "name":"", "email":"", "phone":"" }, "skills":[], "projects":[ { "name":"", "description":"", "techStack":[] } ], "education":[] }
 `
 
+export const profilePrompt = `
+你是一个用户画像分析助手。
+
+根据用户简历内容，生成结构化用户画像。
+
+严格返回JSON：
+{
+  "basic": {
+    "name": "",
+    "email": "",
+    "phone": "",
+    "location": ""
+  },
+
+
+  "education": [
+    {
+      "school": "",
+      "degree": "",
+      "major": "",
+      "startDate": "",
+      "endDate": ""
+    }
+  ],
+
+
+  "skills": {
+    "frontend": [],
+    "backend": [],
+    "database": [],
+    "tools": []
+  },
+
+
+  "projects": [
+    {
+      "name": "",
+      "description": "",
+      "role": "",
+      "techStack": [],
+      "highlights": []
+    }
+  ],
+
+
+  "experience": [
+    {
+      "company": "",
+      "position": "",
+      "description": ""
+    }
+  ],
+
+
+  "careerGoal": {
+    "targetPosition": "",
+    "targetIndustry": "",
+    "level": ""
+  }
+}
+
+不要输出其他内容。
+`;
 
 export const resumeOptimizePrompt = `
 

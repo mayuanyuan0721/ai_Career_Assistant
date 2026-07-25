@@ -1,39 +1,42 @@
-import ResumeOptimizePanel from "./ResumeOptimizePanel"
-import JobMatchPanel  from "./JobMatchPanel"
-import InterviewPanel  from "./InterviewPanel"
+﻿import ResumeOptimizePanel from "./ResumeOptimizePanel"
+import JobMatchPanel from "./JobMatchPanel"
+import InterviewPanel from "./InterviewPanel"
+import { Mode } from "@/types/chat"
 
 
 interface Props {
-    mode:Mode;
-    resume:any;
-    analyzing:boolean;
-    onResumeChange:(data:any)=>void;
-    onAnalysis:(data:string)=>void;
-    onAnalyzingChange:(value:boolean)=>void;
-    conversationId:string
+    mode: Mode;
+    resume: any;
+    analyzing: boolean;
+    onResumeChange: (data: any) => void;
+    onAnalysis: (data: string) => void;
+    onAnalyzingChange: (value: boolean) => void;
+    conversationId: string;
+    onTitleUpdate: () => void;
 }
 
 
-export default function RightPanel({mode,resume,analyzing,onResumeChange,onAnalysis,onAnalyzingChange,conversationId}:Props){
+export default function RightPanel({ mode, resume, analyzing, onResumeChange, onAnalysis, onAnalyzingChange, conversationId, onTitleUpdate }: Props) {
 
-    switch(mode){
+    switch (mode) {
         case "resume_optimize":
             return (
-                <ResumeOptimizePanel 
-                analyzing={analyzing} 
-                resume={resume} 
-                onAnalysis={onAnalysis} 
-                onAnalyzingChange={onAnalyzingChange}  
-                onResumeChange={onResumeChange}
-                conversationId={conversationId}/>
+                <ResumeOptimizePanel
+                    analyzing={analyzing}
+                    resume={resume}
+                    onAnalysis={onAnalysis}
+                    onAnalyzingChange={onAnalyzingChange}
+                    onResumeChange={onResumeChange}
+                    conversationId={conversationId}
+                    onTitleUpdate={onTitleUpdate} />
             )
         case "job_match":
-           return(
-                <JobMatchPanel/>
-           )
+            return (
+                <JobMatchPanel />
+            )
         case "interview":
-            return(
-                <InterviewPanel/>
+            return (
+                <InterviewPanel />
             )
     }
 }

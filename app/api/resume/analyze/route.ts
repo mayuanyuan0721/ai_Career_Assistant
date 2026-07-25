@@ -8,10 +8,13 @@ export async function POST(req:Request) {
     const body=await req.json();
      const resume = body.resume;
     const result=await generateText({
-        model:deepseek("deepseek-chat"),
+        model:deepseek("deepseek-v4-flash"),
         prompt:resumeAnalyzePrompt+JSON.stringify(resume)
     });
+
+
     return Response.json({
-        data:result.text
+         data:result.text
+
     })
 }

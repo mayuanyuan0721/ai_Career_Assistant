@@ -1,21 +1,24 @@
-import {createClient} from "@/lib/supabase/server"
-export async  function POST(req:Request){
-    const {email,password }=await req.json();
-    const supabase=await createClient();
-    const {data,error}=await supabase.auth.signInWithPassword({
+﻿import { createClient } from "@/lib/supabase/server"
+
+export async function POST(req: Request) {
+    const { email, password } = await req.json();
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.auth.signUp({
         email,
         password
     });
-    if(error){
+
+    if (error) {
         return Response.json({
-            error:error.message
+            error: error.message
         },
         {
-            status:400
+            status: 400
         })
     };
-    return Response.json({
-        user:data.user
-    })
 
+    return Response.json({
+        user: data.user
+    })
 }

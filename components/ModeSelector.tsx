@@ -4,7 +4,7 @@ import {Mode} from "@/types/chat"
 import styles from "@/css/page.module.css"
 interface Props{
     mode:Mode;
-    setMode:(str:string)=>void;
+    setMode:(mode:Mode)=>void;
 }
 
 export default function ModeSelector({mode,setMode}:Props){

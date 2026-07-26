@@ -1,9 +1,11 @@
-﻿"use client"
+"use client"
 import Sidebar from "./Sidebar"
 import ChatBox from "./ChatBox"
 import { useEffect, useState } from "react"
 import AuthModal from "./AuthModal"
 import { Mode } from "@/types/chat"
+import { ResumeReport, OptimizedSection } from "@/types/resume"
+import ResumePreview from "./Resume/ResumePreview"
 import styles from "@/css/chatlayout.module.css"
 import RightPanel from "./RightPanel"
 
@@ -16,7 +18,9 @@ export default function ChatLayout() {
     const [checked, setChecked] = useState(false);
     const [mode, setMode] = useState<Mode>("resume_optimize");
     const [resume, setResume] = useState(null);
-    const [resumeAnalysis, setResumeAnalysis] = useState("");
+    const [report, setReport] = useState<ResumeReport | null>(null);
+    const [optimizedSections, setOptimizedSections] = useState<OptimizedSection>({});
+    const [showPreview, setShowPreview] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
 
     async function handleLogout() {
@@ -28,7 +32,8 @@ export default function ChatLayout() {
             setUser(null);
             setConversationId("");
             setResume(null);
-            setResumeAnalysis("");
+            setReport(null);
+            setOptimizedSections({});
             setAnalyzing(false);
             setMode("resume_optimize");
             setRefresh(pre => pre + 1);
@@ -50,7 +55,8 @@ export default function ChatLayout() {
     // Clear resume-related state when switching conversations
     useEffect(() => {
         setResume(null);
-        setResumeAnalysis("");
+        setReport(null);
+        setOptimizedSections({});
         setAnalyzing(false);
     }, [conversationId]);
 
@@ -58,6 +64,14 @@ export default function ChatLayout() {
         console.log("Refresh Sidebar");
         setRefresh(pre => pre + 1);
     }
+
+    // Handle section optimization result
+    const handleSectionOptimized = (key: string, optimized: string) => {
+        setOptimizedSections(prev => ({
+            ...prev,
+            [key]: { optimized, accepted: true }
+        }));
+    };
 
     return (
         <div className={styles.layout} >
@@ -102,7 +116,7 @@ export default function ChatLayout() {
             <div className={styles.chat}>
                 <ChatBox
                     resume={resume}
-                    resumeAnalysis={resumeAnalysis}
+                    report={report}
                     setMode={setMode}
                     mode={mode}
                     user={user}
@@ -113,7 +127,6 @@ export default function ChatLayout() {
                         setShowAuth(true)
                     }}
                 />
-
             </div>
 
             <div className={styles.resume}>
@@ -121,21 +134,26 @@ export default function ChatLayout() {
                     conversationId={conversationId}
                     mode={mode}
                     resume={resume}
+                    report={report}
+                    optimizedSections={optimizedSections}
                     analyzing={analyzing}
-                    onAnalysis={setResumeAnalysis}
+                    onReport={setReport}
                     onResumeChange={setResume}
                     onAnalyzingChange={setAnalyzing}
+                    onSectionOptimized={handleSectionOptimized}
+                    onShowPreview={() => setShowPreview(true)}
                     onTitleUpdate={handleRefresh} />
             </div>
 
-            {
-                showAuth &&
-                <AuthModal
-                    onClose={() => {
-                        setShowAuth(false)
-                    }}
+            {showAuth && <AuthModal onClose={() => { setShowAuth(false) }} />}
+
+            {showPreview && resume && (
+                <ResumePreview
+                    resume={resume}
+                    optimizedSections={optimizedSections}
+                    onClose={() => setShowPreview(false)}
                 />
-            }
+            )}
         </div>
     )
 }

@@ -1,0 +1,125 @@
+/* ── Overlay ── */
+.overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(15,23,42,0.45); backdrop-filter: blur(4px);
+  z-index: 1000; display: flex; flex-direction: column;
+  align-items: center; overflow-y: auto; padding: 28px;
+}
+
+/* ── Toolbar ── */
+.toolbar { display: flex; gap: 12px; margin-bottom: 24px; }
+.closeBtn, .printBtn {
+  padding: 9px 22px; border-radius: 6px; font-size: 14px;
+  font-weight: 500; cursor: pointer; transition: all 0.2s;
+  border: none;
+}
+.closeBtn { border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; }
+.closeBtn:hover { background: rgba(255,255,255,0.15); }
+.printBtn { background: #3b82f6; color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+.printBtn:hover { background: #2563eb; transform: translateY(-1px); }
+.printBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── A4 Page ── */
+.page {
+  width: 210mm; min-height: 297mm; background: #fff;
+  padding: 36px 40px; box-sizing: border-box;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  font-family: "Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif;
+  font-size: 10.5pt; line-height: 1.65; color: #1a1a1a;
+}
+
+/* ── Header ── */
+.header { margin-bottom: 20px; text-align: center; }
+.name {
+  margin: 0 0 8px; font-size: 24pt; font-weight: 800;
+  color: #111; letter-spacing: 4px;
+}
+.contact {
+  display: flex; justify-content: center; align-items: center;
+  gap: 8px; font-size: 9.5pt; color: #555;
+}
+.dot { color: #ccc; margin: 0 2px; }
+
+/* ── Section Bar (light blue header) ── */
+.sectionBar {
+  background: #e8f0fe; padding: 6px 14px;
+  font-size: 12pt; font-weight: 700; color: #1a1a1a;
+  margin: 18px 0 10px; border-radius: 2px;
+  letter-spacing: 1px;
+}
+
+/* ── Section Body ── */
+.sectionBody { padding: 0 4px; }
+
+/* ── Education ── */
+.eduItem { margin-bottom: 12px; }
+.eduRow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.eduSchool { font-weight: 700; font-size: 11pt; color: #111; }
+.eduDate { font-size: 9.5pt; color: #666; white-space: nowrap; }
+.eduDegree { font-size: 10pt; color: #333; margin-bottom: 2px; }
+.eduCourses { font-size: 9.5pt; color: #555; margin-bottom: 2px; }
+
+/* ── Skills ── */
+.skillRow { margin-bottom: 5px; line-height: 1.6; }
+.skillCat {
+  font-weight: 700; font-size: 10.5pt; color: #111;
+  white-space: nowrap;
+}
+.skillList { font-size: 10pt; color: #333; }
+
+/* ── Projects ── */
+.projItem { margin-bottom: 16px; }
+.projItem:last-child { margin-bottom: 0; }
+.projRow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 2px; }
+.projName { font-weight: 700; font-size: 11pt; color: #111; }
+.projRole { font-size: 10pt; color: #555; }
+.projDate { font-size: 9.5pt; color: #666; margin-left: auto; white-space: nowrap; }
+.projUrl { font-size: 9pt; color: #3b82f6; margin-bottom: 2px; word-break: break-all; }
+.projTech { font-size: 9.5pt; color: #444; font-weight: 500; margin-bottom: 4px; }
+
+/* ── Bullet List (override Tailwind preflight) ── */
+.bulletList {
+  margin: 4px 0 0 !important;
+  padding-left: 20px !important;
+  list-style: disc !important;
+}
+.bulletList li {
+  font-size: 10pt !important;
+  color: #333 !important;
+  line-height: 1.7 !important;
+  margin-bottom: 2px !important;
+  list-style-type: disc !important;
+  display: list-item !important;
+  padding: 0 !important;
+}
+
+/* ── Print ── */
+@media print {
+  .overlay {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .toolbar { display: none !important; }
+  .page {
+    box-shadow: none !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 24px 28px !important;
+    margin: 0 !important;
+  }
+  .sectionBar {
+    background: #e8f0fe !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .bulletList li {
+    list-style-type: disc !important;
+    display: list-item !important;
+  }
+  @page { size: A4; margin: 0; }
+}

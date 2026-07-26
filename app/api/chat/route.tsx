@@ -1,8 +1,9 @@
 ﻿import { NextRequest } from 'next/server';
 import { streamText, generateText } from 'ai';
 import { createClient } from "@/lib/supabase/server"
-import { resumeOptimizePrompt, jobMatchPrompt, interviewPrompt } from "@/lib/prompts/resume"
+import { resumeOptimizePrompt, buildResumeOptimizePrompt, buildJobMatchPrompt, buildInterviewPrompt } from "@/lib/prompts/resume"
 import { deepseek } from "@/lib/deepseek/ai"
+import { getJobs, getInterviewQuestions, getResumeExamples, formatJobsForPrompt, formatInterviewForPrompt, formatExamplesForPrompt } from "@/lib/career-data/loader"
 
 
 export async function POST(request: NextRequest) {
@@ -28,19 +29,52 @@ export async function POST(request: NextRequest) {
         }));
 
         const lastMessage = messages[messages.length - 1];
+        // Extract user skills from resume for data filtering
+        const userSkills: string[] = resume?.skills || [];
+
         let systemPrompt = "";
-        switch (mode) {
-            case "resume_optimize":
-                systemPrompt = resumeOptimizePrompt;
-                break;
-            case "job_match":
-                systemPrompt = jobMatchPrompt;
-                break;
-            case "interview":
-                systemPrompt = interviewPrompt;
-                break;
-            default:
-                systemPrompt = "";
+        try {
+            switch (mode) {
+                case "resume_optimize": {
+                    const jobs = getJobs({ skills: userSkills, limit: 5 });
+                    const examples = getResumeExamples({ limit: 2 });
+                    systemPrompt = buildResumeOptimizePrompt(
+                        formatJobsForPrompt(jobs),
+                        formatExamplesForPrompt(examples)
+                    );
+                    console.log("[CHAT] Resume mode: injected", jobs.length, "jobs,", examples.length, "examples");
+                    break;
+                }
+                case "job_match": {
+                    const jobs = getJobs({ skills: userSkills, limit: 8 });
+                    systemPrompt = buildJobMatchPrompt(formatJobsForPrompt(jobs));
+                    console.log("[CHAT] Job match mode: injected", jobs.length, "jobs");
+                    break;
+                }
+                case "interview": {
+                    // Determine category from user skills
+                    const categoryMap: Record<string, string> = {
+                        react: "react", vue: "vue", typescript: "typescript",
+                        javascript: "javascript", css: "css", node: "engineering"
+                    };
+                    const category = userSkills
+                        .map((s: string) => categoryMap[s.toLowerCase()])
+                        .filter(Boolean)[0] || "react";
+                    const questions = getInterviewQuestions({ category, limit: 10 });
+                    systemPrompt = buildInterviewPrompt(formatInterviewForPrompt(questions));
+                    console.log("[CHAT] Interview mode: injected", questions.length, "questions (category:", category + ")");
+                    break;
+                }
+                default:
+                    systemPrompt = "";
+            }
+        } catch (dataErr) {
+            console.warn("[CHAT] Career data injection failed (non-critical):", dataErr);
+            // Fallback to basic prompts
+            switch (mode) {
+                case "resume_optimize": systemPrompt = resumeOptimizePrompt; break;
+                default: systemPrompt = "";
+            }
         }
 
         const userText = lastMessage.parts.filter(

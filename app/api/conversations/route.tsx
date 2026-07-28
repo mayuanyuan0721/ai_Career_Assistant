@@ -14,10 +14,6 @@ export async function DELETE(req: Request) {
         return Response.json({ error: "Missing id" }, { status: 400 })
     }
 
-    console.log("[DELETE] user_id:", user.id);
-    console.log("[DELETE] conversation_id:", id);
-
-    // First verify the conversation belongs to this user
     const { data: conversation, error: findError } = await supabase
         .from("conversations")
         .select("id, user_id, title")
@@ -55,8 +51,6 @@ export async function DELETE(req: Request) {
         .eq("id", id)
         .select("id");
 
-    console.log("[DELETE] Delete result:", deletedRows);
-    console.log("[DELETE] Delete error:", error);
 
     if (error) {
         console.log("[DELETE] Conversation delete error:", error);

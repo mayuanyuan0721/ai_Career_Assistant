@@ -39,22 +39,41 @@ export default function AuthModal({ onClose }: Props) {
     }
 
     async function register() {
-        const res = await fetch(
-            "/api/auth/register",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    email,
-                    password
-                })
-            }
-        )
-        const data = await res.json();
-        console.log(data);
+        setLoading(true);
+        try {
+            const res = await fetch(
+                "/api/auth/register",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password
+                    })
+                }
+            )
+            const data = await res.json();
+            console.log(data);
 
+            if (!res.ok) {
+                alert("注册失败：" + (data.error || "未知错误"));
+                return;
+            }
+
+            if (data.needsEmailConfirm) {
+                alert("注册成功！请前往邮箱点击确认链接后再登录");
+                changeMode("login");
+            } else {
+                alert("注册成功，请登录");
+                changeMode("login");
+            }
+        } catch (err) {
+            alert("注册请求失败，请检查网络后重试");
+        } finally {
+            setLoading(false);
+        }
     }
 
     //做了一个重置清空

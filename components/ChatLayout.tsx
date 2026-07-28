@@ -23,6 +23,15 @@ export default function ChatLayout() {
     const [showPreview, setShowPreview] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
 
+    // Auto-generate a conversation id whenever there is none, so the user
+    // can start chatting immediately without clicking "New Chat" first.
+    // The server creates the conversation on the first message.
+    useEffect(() => {
+        if (!conversationId) {
+            setConversationId(crypto.randomUUID());
+        }
+    }, [conversationId]);
+
     async function handleLogout() {
         const res = await fetch("/api/auth/layout", {
             method: "POST",

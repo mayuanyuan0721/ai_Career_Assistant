@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useMemo, useRef } from "react";
 import styles from "@/css/page.module.css";
@@ -35,52 +35,35 @@ export default function ChatBox({ conversationId, onTitleUpdate, onLogin, outLog
     useEffect(() => { resumeRef.current = resume; }, [resume]);
     useEffect(() => { conversationIdRef.current = conversationId; }, [conversationId]);
 
+    // Only send the latest message; the server rebuilds context from DB
+    // and saves the user message exactly once (no client-side pre-save).
     const transport = useMemo(() => {
         return new DefaultChatTransport({
             api: "/api/chat",
-            fetch: async (url, options) => {
-                let body: any = {};
-                if (options?.body) {
-                    body = JSON.parse(options.body as string);
+            // Intercept non-2xx responses so server error messages
+            // (rate limit, validation, auth) reach useChat's onError
+            fetch: async (input, init) => {
+                const res = await fetch(input, init);
+                if (!res.ok) {
+                    let msg = "发送失败，请稍后重试";
+                    try {
+                        const body = await res.clone().json();
+                        if (body?.error) msg = body.error;
+                    } catch { /* keep default message */ }
+                    throw new Error(msg);
                 }
-
-                // FIX: Use conversationIdRef.current to get latest value
-                const currentConvId = conversationIdRef.current;
-
-                // FIX: Save user message to DB before sending
-                // This prevents message loss when loadHistory runs
-                const lastMsg = body.messages?.[body.messages.length - 1];
-                if (lastMsg?.role === 'user' && lastMsg?.parts && currentConvId) {
-                    const userText = lastMsg.parts
-                        .filter((p: any) => p.type === 'text')
-                        .map((p: any) => p.text)
-                        .join('');
-                    if (userText.trim()) {
-                        try {
-                            await fetch('/api/messages', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    conversationId: currentConvId,
-                                    role: 'user',
-                                    content: userText
-                                })
-                            });
-                        } catch (e) {
-                            console.warn('Failed to save user message:', e);
-                        }
-                    }
-                }
-
-                return fetch(url, {
-                    ...options,
-                    body: JSON.stringify({
-                        ...body,
-                        conversationId: currentConvId,
+                return res;
+            },
+            prepareSendMessagesRequest(request) {
+                const lastMessage = request.messages[request.messages.length - 1];
+                return {
+                    body: {
+                        message: lastMessage,
+                        conversationId: conversationIdRef.current,
                         mode: modeRef.current,
                         resume: resumeRef.current
-                    })
-                })
+                    }
+                };
             }
         })
     }, []);
@@ -88,46 +71,52 @@ export default function ChatBox({ conversationId, onTitleUpdate, onLogin, outLog
     const { messages, sendMessage, status, setMessages } = useChat({
         id: conversationId,
         transport,
-        async onFinish(message) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
+        onData: (dataPart) => {
+            // Server pushes the generated title through the stream as soon
+            // as it is ready -- refresh the sidebar immediately, no sleep
+            if (dataPart.type === "data-chat-title") {
+                onTitleUpdate();
+            }
+        },
+        onFinish() {
+            // Final refresh so a brand-new conversation shows up in the sidebar
             onTitleUpdate();
+        },
+        onError: (err) => {
+            // err.message carries the parsed server error from the transport
+            alert(err?.message || "发送失败，请稍后重试");
         }
     });
 
-    // FIX: Clear useChat state when conversationId changes
-    // This prevents old messages from mixing with new conversation
+    // Clear + load history in ONE effect with a cancellation flag,
+    // so a stale response can never pollute the newly selected conversation
     useEffect(() => {
-        if (conversationId) {
-            setMessages([]);
-        }
-    }, [conversationId, setMessages]);
+        let cancelled = false;
 
-    useEffect(() => {
+        setMessages([]);
+
         async function loadHistory() {
             if (!conversationId) return;
             try {
                 const res = await fetch(`/api/messages?conversationId=${conversationId}`);
                 const data = await res.json();
+                if (cancelled) return;
 
-                // FIX: Deduplicate messages by database ID
-                const seen = new Set<string>();
-                const history = (data.messages ?? [])
-                    .filter((msg: any) => {
-                        if (seen.has(msg.id)) return false;
-                        seen.add(msg.id);
-                        return true;
-                    })
-                    .map((msg: any) => ({
-                        id: `db-${msg.id}`,
-                        role: msg.role,
-                        parts: [{ type: "text", text: msg.content }]
-                    }));
+                const history = (data.messages ?? []).map((msg: any) => ({
+                    id: `db-${msg.id}`,
+                    role: msg.role,
+                    parts: [{ type: "text", text: msg.content }]
+                }));
                 setMessages(history);
             } catch (error) {
-                console.error("Failed to load history:", error);
+                if (!cancelled) {
+                    console.error("Failed to load history:", error);
+                }
             }
         }
         loadHistory();
+
+        return () => { cancelled = true; };
     }, [conversationId, setMessages]);
 
 
@@ -153,9 +142,9 @@ export default function ChatBox({ conversationId, onTitleUpdate, onLogin, outLog
 
     const handleSend = (text: string) => {
         if (!text.trim()) return;
-        // FIX: Check conversationId before sending
-        if (!conversationIdRef.current) {
-            alert("Please create or select a conversation first");
+        if (!user) {
+            alert("\u8bf7\u5148\u767b\u5f55");
+            onLogin();
             return;
         }
         sendMessage({ text });
@@ -164,32 +153,20 @@ export default function ChatBox({ conversationId, onTitleUpdate, onLogin, outLog
     const isLoading = status === "streaming" || status === "submitted";
     const showThinking = status === "submitted" && messages.length > 0 && messages[messages.length - 1].role === "user";
 
-    // FIX: Deduplicate messages in adaptedMessages as well
     const adaptedMessages = useMemo(() => {
-        const seen = new Set<string>();
-        return messages
-            .filter((m) => {
-                // Keep __REPORT__ messages (they have unique IDs)
-                const text = m.parts?.filter((p) => p.type === "text").map((p) => (p as any).text).join("") || "";
-                if (text === "__REPORT__") return true;
-                // Deduplicate by id
-                if (seen.has(m.id)) return false;
-                seen.add(m.id);
-                return true;
-            })
-            .map((m) => {
-                const text = m.parts
-                    ?.filter((p) => p.type === "text")
-                    .map((p) => (p as { type: string; text: string }).text)
-                    .join("") || "";
+        return messages.map((m) => {
+            const text = m.parts
+                ?.filter((p) => p.type === "text")
+                .map((p) => (p as { type: string; text: string }).text)
+                .join("") || "";
 
-                return {
-                    id: m.id,
-                    role: m.role === "system" ? "assistant" : (m.role as "user" | "assistant"),
-                    content: text,
-                    isReport: text === "__REPORT__"
-                };
-            });
+            return {
+                id: m.id,
+                role: m.role === "system" ? "assistant" : (m.role as "user" | "assistant"),
+                content: text,
+                isReport: text === "__REPORT__"
+            };
+        });
     }, [messages]);
 
 
@@ -198,10 +175,10 @@ export default function ChatBox({ conversationId, onTitleUpdate, onLogin, outLog
             <header className={styles.chatHeader}>
                 <h1>AI Assistant</h1>
                 <div className={styles.headerRight}>
-                    {user ? <button className={styles.logoutButton} onClick={outLogout}>退出</button>
-                        : <button className={styles.loginButton} onClick={onLogin}>登录</button>}
+                    {user ? <button className={styles.logoutButton} onClick={outLogout}>{"\u9000\u51fa"}</button>
+                        : <button className={styles.loginButton} onClick={onLogin}>{"\u767b\u5f55"}</button>}
                     {user && <div className={styles.userInfo}>
-                        <span className={styles.userIcon}>👤</span>
+                        <span className={styles.userIcon}>{"\ud83d\udc64"}</span>
                         <span>{user.email}</span>
                     </div>}
                 </div>
@@ -220,3 +197,4 @@ export default function ChatBox({ conversationId, onTitleUpdate, onLogin, outLog
         </div>
     );
 }
+

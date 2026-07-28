@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react"
 import styles from "@/css/siderbar.module.css"
@@ -47,21 +47,15 @@ export default function Sidebar({ onSelectConversation, activeId, onDeleteConver
     return (
         <div className={styles.sidebar}>
             <h2>History</h2>
-            <button className={styles.newChat} onClick={async () => {
+            <button className={styles.newChat} onClick={() => {
                 if (!isLogin) {
                     alert("Please login first");
                     return;
                 }
-                const res = await fetch(
-                    "/api/conversation",
-                    {
-                        method: "POST"
-                    }
-                );
-                const data = await res.json();
-                if (data.data) {
-                    onSelectConversation(data.data.id)
-                }
+                // No API call needed: just switch to a fresh client-generated id.
+                // The server creates the conversation when the first message is sent,
+                // so abandoned empty chats never pollute the history list.
+                onSelectConversation(crypto.randomUUID());
             }}>
                 + New Chat
             </button>
@@ -79,7 +73,7 @@ export default function Sidebar({ onSelectConversation, activeId, onDeleteConver
                             </span>
                             <button className={styles.deleteBtn} onClick={async (e) => {
                                 e.stopPropagation();
-                                if (confirm("Are you sure to delete this chat?")) {
+                                if (confirm("你确定要删除这个聊天?")) {
                                     await onDeleteConversation(item.id);
                                 }
                             }}>

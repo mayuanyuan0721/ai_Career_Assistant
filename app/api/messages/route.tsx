@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { NextRequest } from "next/server";
 
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
     const conversationId = req.nextUrl.searchParams.get('conversationId');
     if (!conversationId) {
-        return Response.json({ error: "Missing conversationId" })
+        return Response.json({ error: "Missing conversationId" }, { status: 400 })
     }
 
     // Verify the conversation belongs to the current user
@@ -58,7 +58,26 @@ export async function POST(req: Request) {
         return Response.json({ error: "Missing fields" }, { status: 400 })
     }
 
-    // Directly insert - the FK constraint will ensure conversation exists
+    // Validate role and content length
+    if (role !== "user" && role !== "assistant") {
+        return Response.json({ error: "Invalid role" }, { status: 400 })
+    }
+    if (typeof content !== "string" || content.length > 100000) {
+        return Response.json({ error: "Invalid content" }, { status: 400 })
+    }
+
+    // Verify the conversation belongs to the current user before inserting
+    const { data: conversation } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("id", conversationId)
+        .eq("user_id", user.id)
+        .single();
+
+    if (!conversation) {
+        return Response.json({ error: "Conversation not found" }, { status: 404 })
+    }
+
     const { data, error } = await supabase
         .from("messages")
         .insert({

@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import {
     createUIMessageStream,
     createUIMessageStreamResponse,
@@ -11,6 +11,8 @@ import { resumeOptimizePrompt, buildResumeOptimizePrompt, buildJobMatchPrompt, b
 import { deepseek } from "@/lib/deepseek/ai"
 import { getJobs, getInterviewQuestions, getResumeExamples, formatJobsForPrompt, formatInterviewForPrompt, formatExamplesForPrompt } from "@/lib/career-data/loader"
 import { apiError } from "@/lib/api/http"
+import { prepareContext, estimateMessagesTokens } from "@/lib/context-manager"
+import { getUserMemories, extractAndSaveMemories } from "@/lib/memory-manager"
 
 // Simple per-user rate limit: max messages within a rolling 24h window.
 // Backed by the messages table, so it survives restarts with no extra infra.
@@ -24,7 +26,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-        return apiError("未登录", 401);
+        return apiError("\u672a\u767b\u5f55", 401);
     }
 
     try {
@@ -34,12 +36,12 @@ export async function POST(request: NextRequest) {
         console.log("[CHAT] mode:", mode);
 
         if (!conversationId || !message?.parts) {
-            return apiError("请求参数不完整", 400);
+            return apiError("\u8bf7\u6c42\u53c2\u6570\u4e0d\u5b8c\u6574", 400);
         }
 
         // Reject unknown modes early
         if (!VALID_MODES.includes(mode ?? "")) {
-            return apiError("未知的对话模式", 400);
+            return apiError("\u672a\u77e5\u7684\u5bf9\u8bdd\u6a21\u5f0f", 400);
         }
 
         // Per-user rate limit (fail open if the count query itself errors)
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
             .gte("created_at", windowStart);
 
         if (!countErr && count !== null && count >= DAILY_MESSAGE_LIMIT) {
-            return apiError("今日消息已达上限，请明天再试", 429);
+            return apiError("\u4eca\u65e5\u6d88\u606f\u5df2\u8fbe\u4e0a\u9650\uff0c\u8bf7\u660e\u5929\u518d\u8bd5", 429);
         }
 
         // Extract user skills from resume for data filtering
@@ -110,10 +112,10 @@ export async function POST(request: NextRequest) {
 
         // Validate message content
         if (!userText) {
-            return apiError("消息内容不能为空", 400);
+            return apiError("\u6d88\u606f\u5185\u5bb9\u4e0d\u80fd\u4e3a\u7a7a", 400);
         }
         if (userText.length > MAX_MESSAGE_LENGTH) {
-            return apiError(`消息过长（最多 ${MAX_MESSAGE_LENGTH} 字）`, 400);
+            return apiError(`\u6d88\u606f\u8fc7\u957f\uff08\u6700\u591a ${MAX_MESSAGE_LENGTH} \u5b57\uff09`, 400);
         }
 
         // Ensure conversation exists AND belongs to the current user
@@ -124,7 +126,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (conversation && conversation.user_id !== user.id) {
-            return apiError("无权访问该会话", 403);
+            return apiError("\u65e0\u6743\u8bbf\u95ee\u8be5\u4f1a\u8bdd", 403);
         }
 
         if (!conversation) {
@@ -145,13 +147,34 @@ export async function POST(request: NextRequest) {
             .eq("conversation_id", conversationId)
             .order("created_at", { ascending: true });
 
-        const modelMessages = [
+        const allMessages = [
             ...(historyRows ?? []).map((row) => ({
                 role: row.role as "user" | "assistant",
                 content: row.content as string
             })),
             { role: "user" as const, content: userText }
         ];
+
+        // Context length management: if messages exceed token limit,
+        // summarize older messages and keep only recent ones
+        const totalTokens = estimateMessagesTokens(allMessages);
+        let modelMessages: { role: "user" | "assistant"; content: string }[];
+        let contextSummary = "";
+
+        if (totalTokens > 30000) {
+            console.log(`[CHAT] Context overflow: ${totalTokens} tokens, preparing summary...`);
+            const prepared = await prepareContext(allMessages);
+            modelMessages = prepared.messages as { role: "user" | "assistant"; content: string }[];
+            contextSummary = prepared.summary;
+            console.log(`[CHAT] After truncation: ${estimateMessagesTokens(modelMessages)} tokens, ${modelMessages.length} messages kept`);
+        } else {
+            modelMessages = allMessages;
+        }
+
+        // Cross-session memory: inject user memories into system prompt
+        const userMemories = await getUserMemories(supabase, user.id);
+        const finalSystemPrompt = systemPrompt + userMemories +
+            (contextSummary ? `\n\n[\u65e9\u671f\u5bf9\u8bdd\u6458\u8981]\n${contextSummary}` : "");
 
         // Save user message (server-side only, exactly once)
         const { error: msgError } = await supabase
@@ -190,7 +213,7 @@ ${userText}`
             execute: async ({ writer: dataStream }) => {
                 const result = streamText({
                     model: deepseek('deepseek-v4-flash'),
-                    instructions: systemPrompt,
+                    instructions: finalSystemPrompt,
                     messages: modelMessages,
 
                     onFinish: async ({ text }) => {
@@ -206,6 +229,10 @@ ${userText}`
                         if (saveErr) {
                             console.error("[CHAT] Save assistant message failed:", saveErr);
                         }
+
+                        // Cross-session memory: extract key facts from this turn
+                        // Non-blocking: fire-and-forget, failures are logged but ignored
+                        extractAndSaveMemories(supabase, user.id, userText, text).catch(() => {});
                     }
                 });
 
@@ -244,6 +271,6 @@ ${userText}`
         return createUIMessageStreamResponse({ stream });
     } catch (err) {
         console.error("[CHAT] Error:", err);
-        return apiError("服务暂时不可用，请稍后重试", 500);
+        return apiError("\u670d\u52a1\u6682\u65f6\u4e0d\u53ef\u7528\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5", 500);
     }
 }

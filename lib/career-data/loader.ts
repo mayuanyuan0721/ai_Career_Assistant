@@ -39,7 +39,7 @@ function readJsonCached<T>(filePath: string): T[] {
 
 // ─── Data file paths ────────────────────────────────────────────────────────
 const FILES = {
-  jobs: path.join(DATA_DIR, "jobs", "frontend_jobs.json"),
+  jobs: path.join(DATA_DIR, "jobs", "frontend_jobs_enhanced.json"),  // Use enhanced data
   interview: path.join(DATA_DIR, "interview", "questions.json"),
   projects: path.join(DATA_DIR, "projects", "projects.json"),
   articles: path.join(DATA_DIR, "articles", "frontend_articles.json"),
@@ -48,14 +48,22 @@ const FILES = {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 export interface Job {
+  id: string;
   title: string;
   level: string;
   experience: string;
   salary: string;
   skills: string[];
-  responsibility: string;
+  responsibility?: string;
   description: string;
   source: string;
+  // Enhanced fields
+  location?: string;      // 工作地点（城市）
+  address?: string;       // 详细地址
+  company?: string;       // 公司名称
+  company_size?: string;  // 公司规模
+  job_url?: string;       // 岗位链接
+  requirements?: string[];
 }
 
 export interface InterviewQuestion {

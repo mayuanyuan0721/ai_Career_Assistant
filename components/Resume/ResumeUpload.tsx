@@ -45,7 +45,7 @@ export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAn
             const resResume = await fetch("/api/resume/upload", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ filename, content: text })
+                body: JSON.stringify({ filename, content: text, conversationId })
             });
             const dataResume = await resResume.json();
             console.log("[RESUME] Uploaded:", dataResume);
@@ -100,6 +100,28 @@ export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAn
             // Pass structured report (not raw text)
             onAnalysis(analyzeData.data);
 
+            // 4.5 Save parsed resume data and report to database
+            try {
+                const saveRes = await fetch("/api/resume/save", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        conversationId,
+                        resumeData: resume,
+                        report: analyzeData.data,
+                        filename
+                    })
+                });
+                if (!saveRes.ok) {
+                    const saveErr = await saveRes.json().catch(() => ({}));
+                    console.warn("[RESUME] Save parsed data failed:", saveErr);
+                } else {
+                    console.log("[RESUME] Parsed data saved to DB");
+                }
+            } catch (saveErr) {
+                console.warn("[RESUME] Save parsed data failed (non-critical):", saveErr);
+            }
+
             // 5. Generate title (non-critical)
             try {
                 const summary = analyzeData.data.summary || "";
@@ -131,10 +153,13 @@ export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAn
                     })
                 });
                 if (!msgRes.ok) {
-                    console.warn("[RESUME] Save message failed:", msgRes.status);
+                    const errData = await msgRes.json().catch(() => ({}));
+                    console.error("[RESUME] Save message failed:", msgRes.status, errData);
+                } else {
+                    console.log("[RESUME] Analysis message saved");
                 }
             } catch (msgErr) {
-                console.warn("[RESUME] Save message error (non-critical):", msgErr);
+                console.error("[RESUME] Save message error:", msgErr);
             }
 
         } catch (err) {

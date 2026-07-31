@@ -42,8 +42,8 @@ export default function RightPanel({ mode, resume, report, optimizedSections, an
                     onTitleUpdate={onTitleUpdate} />
             )
         case "job_match":
-            return <JobMatchPanel />
+            return <JobMatchPanel resume={resume} />
         case "interview":
-            return <InterviewPanel />
+            return <InterviewPanel resume={resume} />
     }
 }

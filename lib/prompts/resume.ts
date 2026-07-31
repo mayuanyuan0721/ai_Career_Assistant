@@ -9,7 +9,7 @@ export const resumeAnalyzePrompt = `
 # 分析维度
 
 ## 1. 内容质量（content）
-- 项目描述是否使用 STAR 法则（情境-任务-行动-结果）
+- 项目描述是否使用 STAR 法则（情境 - 任务 - 行动 - 结果）
 - 是否有量化指标（性能提升百分比、用户数、代码量等）
 - 技术描述是否有深度（不只是罗列技术栈，而是说明解决了什么问题）
 
@@ -33,21 +33,21 @@ export const resumeAnalyzePrompt = `
     "structure": 0,
     "keywords": 0
   },
-  "summary": "简历总体评价，2-3句话概括简历水平和主要问题",
+  "summary": "简历总体评价，2-3 句话概括简历水平和主要问题",
   "sections": [
     {
       "type": "project",
       "name": "项目名称",
       "original": "原始描述文本",
-      "optimized": "优化后的完整描述，使用STAR法则，包含量化指标",
-      "changes": ["修改点1：具体改了什么", "修改点2：为什么这样改"],
+      "optimized": "优化后的完整描述，使用 STAR 法则，包含量化指标",
+      "changes": ["修改点 1：具体改了什么", "修改点 2：为什么这样改"],
       "score": 0
     },
     {
       "type": "skills",
       "original": "当前技能列表，逗号分隔",
       "optimized": "优化后的技能列表，按类别分组",
-      "suggested_add": ["建议新增的技能1", "建议新增的技能2"],
+      "suggested_add": ["建议新增的技能 1", "建议新增的技能 2"],
       "changes": ["技能分析说明"],
       "score": 0
     },
@@ -60,9 +60,9 @@ export const resumeAnalyzePrompt = `
       "score": 0
     }
   ],
-  "keyword_gaps": ["缺失关键词1", "缺失关键词2"],
+  "keyword_gaps": ["缺失关键词 1", "缺失关键词 2"],
   "market_insights": "基于当前前端就业市场的洞察和建议",
-  "next_steps": ["下一步行动建议1", "下一步行动建议2", "下一步行动建议3"]
+  "next_steps": ["下一步行动建议 1", "下一步行动建议 2", "下一步行动建议 3"]
 }
 
 # 评分标准
@@ -90,12 +90,12 @@ export const resumeParsePrompt = `
 转换为结构化 JSON。
 
 要求：
-1. 只能返回JSON
+1. 只能返回 JSON
 2. 不允许返回解释
 3. 字段保持固定
 
 格式:
-{ "basic":{ "name":"", "email":"", "phone":"" }, "skills":[], "projects":[ { "name":"", "description":"", "techStack":[] } ], "education":[] }
+{ "basic":{"name":"","email":"","phone":""}, "skills":[], "projects":[ { "name":"", "description":"", "techStack":[] } ], "education":[] }
 `;
 
 export const profilePrompt = `
@@ -103,7 +103,7 @@ export const profilePrompt = `
 
 根据用户简历内容，生成结构化用户画像。
 
-严格返回JSON：
+严格返回 JSON：
 {
   "basic": {
     "name": "",
@@ -199,17 +199,17 @@ xxx
 
 # 身份限制
 不要说：
-"我是DeepSeek"
+"我是 DeepSeek"
 不要介绍自己的模型身份。
 如果用户问你是谁，
 回答：
-"我是AI简历助手，负责帮助你优化技术简历。"
+"我是 AI 简历助手，负责帮助你优化技术简历。"
 `;
 
 export const jobMatchPrompt = `
 你是一名职业规划专家。
 
-根据用户简历和目标岗位JD：
+根据用户简历和目标岗位 JD：
 
 分析：
 
@@ -252,7 +252,7 @@ export function buildResumeOptimizePrompt(jobs?: string, examples?: string): str
 }
 
 export function buildJobMatchPrompt(marketJobs?: string): string {
-  const base = "你是一名职业规划专家。\n\n根据用户简历和目标岗位JD：\n\n分析：\n\n1. 技能匹配度\n2. 优势\n3. 不足\n4. 学习路线\n5. 薪资参考范围\n";
+  const base = "你是一名职业规划专家。\n\n根据用户简历和目标岗位 JD：\n\n分析：\n\n1. 技能匹配度\n2. 优势\n3. 不足\n4. 学习路线\n5. 薪资参考范围\n";
 
   if (marketJobs) {
     return base + "\n\n# 当前市场真实岗位数据（参考）\n\n" + marketJobs + "\n\n请基于以上真实市场数据，对比用户简历给出匹配分析和建议。\n";
@@ -260,8 +260,15 @@ export function buildJobMatchPrompt(marketJobs?: string): string {
   return base;
 }
 
+// Format interview questions for prompt
+export function formatInterviewForPrompt(questions: { category: string; level: string; question: string }[]): string {
+  return questions.map((q, i) => {
+    return `[问题${i + 1}] ${q.question} (${q.category}, ${q.level})`;
+  }).join("\n\n");
+}
+
 export function buildInterviewPrompt(questions?: string): string {
-  const base = "你是一名资深技术面试官。\n\n根据用户目标岗位：\n\n1. 提出面试问题\n2. 等待用户回答\n3. 分析回答质量\n4. 给出改进建议\n\n# 面试规则\n\n- 每次只问一个问题\n- 等用户回答后再问下一个\n- 对用户的回答进行评分（1-10分）并给出改进建议\n- 问题难度根据用户回答水平动态调整\n";
+  const base = "你是一名资深技术面试官。\n\n根据用户目标岗位：\n\n1. 提出面试问题\n2. 等待用户回答\n3. 分析回答质量\n4. 给出改进建议\n\n# 面试规则\n\n- 每次只问一个问题\n- 等用户回答后再问下一个\n- 对用户的回答进行评分（1-10 分）并给出改进建议\n- 问题难度根据用户回答水平动态调整\n";
 
   if (questions) {
     return base + "\n# 面试题库参考（优先使用，可适度改编）\n\n" + questions + "\n\n请优先从以上题库中选取问题进行面试，保持考察方向不变。\n";
@@ -310,10 +317,10 @@ export const sectionOptimizePrompt = `
     { "what": "改了什么", "why": "为什么改" }
   ],
   "interview_questions": [
-    "面试官可能追问的问题1",
-    "面试官可能追问的问题2"
+    "面试官可能追问的问题 1",
+    "面试官可能追问的问题 2"
   ],
-  "tech_highlights": ["技术亮点1", "技术亮点2"]
+  "tech_highlights": ["技术亮点 1", "技术亮点 2"]
 }
 
 不要返回其他内容。

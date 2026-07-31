@@ -1,15 +1,31 @@
 import { createClient } from "@/lib/supabase/server"
 
-export async function GET() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+// Timeout helper
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => 
+            setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
+        )
+    ]).catch(() => fallback)
+}
 
-    // Return 401 when there is no session so the frontend can tell
-    // "logged out" apart from a successful-but-empty response.
-    // Body still carries `user: null` for backward compatibility.
+export async function GET() {
+    const supabase = await createClient()
+    
+    // Add timeout to auth check
+    const authResult = await withTimeout(
+        supabase.auth.getUser(),
+        5000,
+        { data: { user: null }, error: new Error('Auth timeout') }
+    )
+    
+    const { data: { user } } = authResult
+
     if (!user) {
-        return Response.json({ user: null }, { status: 401 });
+        return Response.json({ user: null }, { status: 401 })
     }
 
-    return Response.json({ user });
+    return Response.json({ user })
 }
+

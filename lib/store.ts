@@ -1,5 +1,6 @@
-﻿// lib/store.ts - Global conversation state management with Zustand (Optimized)
+// lib/store.ts - Global conversation state management with Zustand (Optimized)
 import { create } from 'zustand'
+import { Conversation, ConversationType } from '@/types/chat'
 
 export interface UIMessagePart {
     type: string
@@ -11,14 +12,6 @@ export interface UIMessage {
     id: string
     role: "user" | "assistant" | "system"
     parts: UIMessagePart[]
-}
-
-export interface Conversation {
-    id: string
-    title: string
-    user_id: string
-    created_at: string
-    updated_at: string
 }
 
 export interface AppStoreState {
@@ -43,6 +36,10 @@ export interface AppStoreState {
     loadMessages: (conversationId: string) => Promise<UIMessage[]>
     hasMessages: (conversationId: string) => boolean
     getMessages: (conversationId: string) => UIMessage[]
+    addConversation: (conversation: Conversation) => void
+    updateConversation: (id: string, updates: Partial<Conversation>) => void
+    getConversationById: (id: string) => Conversation | undefined
+    getConversationsByType: (type: ConversationType) => Conversation[]
 }
 
 export const useAppStore = create<AppStoreState>()((set, get) => ({
@@ -157,6 +154,28 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
     
     getMessages: (conversationId: string) => {
         return get().messagesMap[conversationId] || []
+    },
+    
+    addConversation: (conversation: Conversation) => {
+        set({ 
+            conversations: [...get().conversations, conversation]
+        })
+    },
+    
+    updateConversation: (id: string, updates: Partial<Conversation>) => {
+        set({
+            conversations: get().conversations.map(conv =>
+                conv.id === id ? { ...conv, ...updates } : conv
+            )
+        })
+    },
+    
+    getConversationById: (id: string) => {
+        return get().conversations.find(conv => conv.id === id)
+    },
+    
+    getConversationsByType: (type: ConversationType) => {
+        return get().conversations.filter(conv => conv.type === type)
     }
 }))
 

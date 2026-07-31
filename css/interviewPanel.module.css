@@ -1,0 +1,270 @@
+.panel {
+  height: 100%;
+  padding: 20px;
+  background: #fafafa;
+  overflow-y: auto;
+}
+
+.panel h2 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.subTitle {
+  font-size: 13px;
+  color: #888;
+  margin-top: 6px;
+  margin-bottom: 16px;
+}
+
+.empty {
+  height: 260px;
+  border: 1px dashed #ddd;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: white;
+}
+
+.empty h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.empty p {
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+  margin-top: 6px;
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.05);
+  margin-bottom: 14px;
+}
+
+.card h3 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  color: #111;
+}
+
+.card p {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.introText {
+  font-size: 13px;
+  color: #666;
+  background: white;
+  padding: 14px 16px;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.05);
+  line-height: 1.6;
+}
+
+.qnCard {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  margin-bottom: 14px;
+}
+
+.qnHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.qnIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.qnTitle {
+  flex: 1;
+}
+
+.qnTitle h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+}
+
+.qnMeta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qnTag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.qnLabel {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: white;
+}
+
+.qnLabel.junior { background: #10b981; }
+.qnLabel.middle { background: #f59e0b; }
+.qnLabel.senior { background: #ef4444; }
+
+.answerBox {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.userAnswer {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 10px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.scoreBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.scoreGood {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.scoreMid {
+  background: #fef9c3;
+  color: #ca8a04;
+}
+
+.scoreBad {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.feedback {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid #e0e7ff;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.feedback h5 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #1e40af;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feedback p {
+  margin: 0;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.nextQnBtn {
+  margin-top: 12px;
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.nextQnBtn:hover {
+  background: #1d4ed8;
+}
+
+.nextQnBtn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.finishResult {
+  text-align: center;
+  padding: 30px 20px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.05);
+}
+
+.finishScore {
+  font-size: 48px;
+  font-weight: 800;
+  color: #2563eb;
+  margin: 16px 0 10px 0;
+}
+
+.finishMsg {
+  font-size: 14px;
+  color: #555;
+  margin: 0 0 20px 0;
+}
+
+.restartBtn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity .15s;
+}
+
+.restartBtn:hover {
+  opacity: .85;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px 0;
+  color: #888;
+  font-size: 13px;
+}

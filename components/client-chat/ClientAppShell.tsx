@@ -7,16 +7,23 @@ import Sidebar from "@/components/layout/sidebar"
 import ChatPanel from "@/components/chat/chat-panel"
 import RightPanel from "@/components/RightPanel"
 import AuthModal from "@/components/auth/auth-modal"
-import { Mode } from "@/types/chat"
+import { Mode, ConversationType } from "@/types/chat"
 import { ResumeReport, OptimizedSection } from "@/types/resume"
+import { InterviewData } from "@/types/chat"
 
 interface Props {
     initialMessages: Array<{ id: string; role: string; parts: any[] }>
     user: any
     initialConversationId: string
+    initialConversationType?: ConversationType
 }
 
-export default function ClientChatShell({ initialMessages, user, initialConversationId }: Props) {
+export default function ClientChatShell({ 
+    initialMessages, 
+    user, 
+    initialConversationId,
+    initialConversationType = 'chat'
+}: Props) {
     const router = useRouter()
     const pathname = usePathname()
     const initializedRef = useRef(false)
@@ -30,26 +37,59 @@ export default function ClientChatShell({ initialMessages, user, initialConversa
         checkAuth,
         fetchConversations,
         getMessages,
+        getConversationById,
     } = useAppStore()
     
-    const [mode] = useState<Mode>("resume_optimize")
+    const [mode, setMode] = useState<Mode>("resume_optimize")
     const [resume, setResume] = useState<any>(null)
     const [report, setReport] = useState<ResumeReport | null>(null)
     const [optimizedSections, setOptimizedSections] = useState<OptimizedSection>({})
     const [showPreview, setShowPreview] = useState(false)
     const [analyzing, setAnalyzing] = useState(false)
     const [showAuth, setShowAuth] = useState(false)
+    const [interviewData, setInterviewData] = useState<InterviewData | undefined>(undefined)
     const localUser = user
     
-    // Initialize ONCE with correct conversationId from props
+    console.log('[ClientChatShell] Render - conversationId:', conversationId, 'resume:', !!resume)
+    
+    // Load resume from localStorage on mount
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('resume-data')
+            console.log('[ClientChatShell] Loaded from localStorage:', saved ? 'found' : 'not found')
+            if (saved) {
+                const data = JSON.parse(saved)
+                console.log('[ClientChatShell] Resume data:', data)
+                setResume(data.resume)
+                setReport(data.report)
+                setOptimizedSections(data.optimizedSections || {})
+            }
+        } catch (err) {
+            console.error('[ClientChatShell] Failed to load resume:', err)
+        }
+    }, [])
+    
+    // Save resume to localStorage when it changes
+    useEffect(() => {
+        if (resume) {
+            try {
+                const data = { resume, report, optimizedSections }
+                localStorage.setItem('resume-data', JSON.stringify(data))
+                console.log('[ClientChatShell] Saved to localStorage:', !!resume)
+            } catch (err) {
+                console.error('[ClientChatShell] Failed to save resume:', err)
+            }
+        }
+    }, [resume, report, optimizedSections])
+    
     useEffect(() => {
         if (initializedRef.current) {
-            console.log('[ClientChatShell] Already initialized, skipping')
             return
         }
         
-        console.log('[ClientChatShell] Initializing with conversationId:', initialConversationId)
         initializedRef.current = true
+        
+        console.log('[ClientChatShell] Initializing with conversationId:', initialConversationId)
         
         init({
             initialConversationId,
@@ -57,76 +97,93 @@ export default function ClientChatShell({ initialMessages, user, initialConversa
             user: localUser
         })
         
-        // Check auth and load conversations once
         checkAuth().catch(console.error)
         fetchConversations().catch(console.error)
     }, [initialConversationId, initialMessages, localUser])
     
-    // Sync URL when conversation changes
+    const currentConversation = getConversationById(conversationId)
+    const conversationType = currentConversation?.type || initialConversationType
+    
+    useEffect(() => {
+        if (conversationType === 'interview' && currentConversation?.interview_data) {
+            setInterviewData(currentConversation.interview_data)
+        }
+    }, [conversationType, currentConversation])
+    
+    // Debug: Log messages
+    useEffect(() => {
+        const msgs = getMessages(conversationId)
+        console.log('[ClientChatShell] Messages for conversation:', conversationId, 'count:', msgs?.length || 0)
+    }, [conversationId, getMessages])
+    
     const updateUrl = useCallback((id: string) => {
-        router.replace(`/chat/${id}`, undefined)
+        router.replace("/chat/" + id, undefined)
     }, [router])
     
     const handleSelectConversation = useCallback((id: string) => {
-        if (id === conversationId) return
-        
-        console.log('[ClientChatShell] Selecting conversation:', id)
         selectConversation(id)
         updateUrl(id)
-        
-        // Preload messages in background
-        useAppStore.getState().loadMessages(id).catch(console.error)
-    }, [conversationId, selectConversation, updateUrl])
+    }, [selectConversation, updateUrl])
     
-    async function handleLogout() {
-        try {
-            const res = await fetch("/api/auth/layout", { method: "POST" })
-            if (res.ok) {
-                window.location.href = "/"
-            }
-        } catch (err) {
-            console.error("Logout failed:", err)
-        }
-    }
-    
-    const handleSectionOptimized = useCallback((key: string, optimized: string) => {
-        setOptimizedSections((prev: any) => ({
-            ...prev,
-            [key]: { optimized, accepted: true },
-        }))
+    const handleLogout = useCallback(async () => {
+        await fetch("/api/auth/logout", { method: "POST" })
+        localStorage.removeItem('resume-data')
+        window.location.href = "/"
     }, [])
     
-    const ResumePreview = typeof window !== "undefined"
-        ? require("@/components/Resume/ResumePreview").default
-        : null
+    const handleResumeChange = useCallback((data: any) => {
+        console.log('[ClientChatShell] Resume changed:', !!data)
+        setResume(data)
+    }, [])
     
-    const currentMessages = getMessages(conversationId)
+    const handleReport = useCallback((r: ResumeReport | null) => {
+        setReport(r)
+    }, [])
     
-    console.log('[ClientChatShell] Render - conversationId:', conversationId, 'pathname:', pathname)
+    const handleAnalyzingChange = useCallback((v: boolean) => {
+        setAnalyzing(v)
+    }, [])
+    
+    const handleSectionOptimized = useCallback((key: string, optimized: string) => {
+        setOptimizedSections(prev => ({ ...prev, [key]: { optimized, accepted: false } }))
+    }, [])
+    
+    const handleShowPreview = useCallback(() => {
+        setShowPreview(v => !v)
+    }, [])
+    
+    const handleTitleUpdate = useCallback(() => {
+        fetchConversations().catch(console.error)
+    }, [fetchConversations])
+    
+    if (!isAuthChecked) {
+        return null
+    }
     
     return (
-        <div className="flex h-screen">
+        <div className="flex h-screen bg-background">
             <Sidebar
-                isLogin={!!localUser}
-                onDeleteConversation={(id) => console.log('delete', id)}
+                conversations={conversations}
                 activeId={conversationId}
                 onSelectConversation={handleSelectConversation}
+                onLogout={handleLogout}
             />
             
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 flex flex-col min-w-0">
                 <ChatPanel
                     conversationId={conversationId}
-                    initialMessages={currentMessages}
+                    conversationType={conversationType}
+                    initialMessages={getMessages(conversationId) || []}
                     onLogout={handleLogout}
                     user={localUser}
                     mode={mode}
-                    setMode={() => {}}
+                    setMode={setMode}
                     resume={resume}
                     report={report}
                 />
             </div>
             
-            <div className="w-[340px] border-l overflow-hidden">
+            <div className="w-[400px] border-l">
                 <RightPanel
                     conversationId={conversationId}
                     mode={mode}
@@ -134,25 +191,16 @@ export default function ClientChatShell({ initialMessages, user, initialConversa
                     report={report}
                     optimizedSections={optimizedSections}
                     analyzing={analyzing}
-                    onReport={setReport}
-                    onResumeChange={setResume}
-                    onAnalyzingChange={setAnalyzing}
+                    onResumeChange={handleResumeChange}
+                    onReport={handleReport}
+                    onAnalyzingChange={handleAnalyzingChange}
                     onSectionOptimized={handleSectionOptimized}
-                    onShowPreview={() => setShowPreview(true)}
-                    onTitleUpdate={() => {}}
+                    onShowPreview={handleShowPreview}
+                    onTitleUpdate={handleTitleUpdate}
                 />
             </div>
             
             <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
-            
-            {showPreview && resume && ResumePreview && (
-                <ResumePreview
-                    resume={resume}
-                    optimizedSections={optimizedSections}
-                    onClose={() => setShowPreview(false)}
-                />
-            )}
         </div>
     )
 }
-

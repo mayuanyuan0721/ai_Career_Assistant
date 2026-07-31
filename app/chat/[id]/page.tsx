@@ -7,14 +7,34 @@ export default async function ChatDetailPage({ params }: { params: Promise<{ id:
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: conversation } = await supabase.from("conversations").select("id, title, user_id").eq("id", id).single()
+    // Fetch conversation with type field
+    const { data: conversation } = await supabase
+        .from("conversations")
+        .select("id, title, user_id, type, interview_data")
+        .eq("id", id)
+        .single()
+    
     if (conversation && conversation.user_id !== user?.id) return notFound()
 
-    const { data: messageRows } = await supabase.from("messages").select("id, role, content").eq("conversation_id", id).order("created_at", { ascending: true })
+    const { data: messageRows } = await supabase
+        .from("messages")
+        .select("id, role, content")
+        .eq("conversation_id", id)
+        .order("created_at", { ascending: true })
+    
     const initialMessages = (messageRows ?? []).map((msg) => ({
-        id: `db-${msg.id}`, role: msg.role, parts: [{ type: "text" as const, text: msg.content as string }],
+        id: `db-${msg.id}`, 
+        role: msg.role, 
+        parts: [{ type: "text" as const, text: msg.content as string }],
     }))
 
-    return <ClientChatShell user={user || null} initialMessages={initialMessages} initialConversationId={id} />
+    return (
+        <ClientChatShell 
+            user={user || null} 
+            initialMessages={initialMessages} 
+            initialConversationId={id}
+            initialConversationType={conversation?.type || 'chat'}
+        />
+    )
 }
 

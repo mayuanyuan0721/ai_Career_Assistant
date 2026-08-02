@@ -75,7 +75,6 @@ export default function ClientChatShell({
             try {
                 const data = { resume, report, optimizedSections }
                 localStorage.setItem('resume-data', JSON.stringify(data))
-                console.log('[ClientChatShell] Saved to localStorage:', !!resume)
             } catch (err) {
                 console.error('[ClientChatShell] Failed to save resume:', err)
             }
@@ -90,6 +89,7 @@ export default function ClientChatShell({
         initializedRef.current = true
         
         console.log('[ClientChatShell] Initializing with conversationId:', initialConversationId)
+        console.log('[ClientChatShell] Initial messages count:', initialMessages.length)
         
         init({
             initialConversationId,
@@ -156,6 +156,44 @@ export default function ClientChatShell({
         fetchConversations().catch(console.error)
     }, [fetchConversations])
     
+    const handleDeleteConversation = useCallback(async (id: string) => {
+        console.log('[ClientChatShell] Deleting conversation:', id)
+        try {
+            const res = await fetch(`/api/conversations?id=${id}`, { method: 'DELETE' })
+            console.log('[ClientChatShell] Delete response:', res.status)
+            
+            if (res.ok) {
+                console.log('[ClientChatShell] Delete successful, refreshing conversations...')
+                // 强制重新获取对话列表
+                const conversations = await fetchConversations()
+                console.log('[ClientChatShell] Refreshed conversations:', conversations.length)
+                
+                // 如果删除的是当前对话，跳转到第一个对话或首页
+                if (conversationId === id) {
+                    console.log('[ClientChatShell] Deleted current conversation')
+                    if (conversations.length > 0) {
+                        // 跳转到第一个对话
+                        const firstConv = conversations[0]
+                        console.log('[ClientChatShell] Redirecting to first conversation:', firstConv.id)
+                        router.push(`/chat/${firstConv.id}`)
+                    } else {
+                        // 没有对话了，跳转到不自动创建对话的页面
+                        console.log('[ClientChatShell] No conversations left, showing empty state')
+                        // 保持当前 URL，但显示空状态
+                        router.replace('/chat/empty')
+                    }
+                }
+            } else {
+                const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+                console.error('[ClientChatShell] Delete failed:', errorData)
+                alert(`删除失败：${errorData.error || '请重试'}`)
+            }
+        } catch (err) {
+            console.error('[ClientChatShell] Delete conversation error:', err)
+            alert('删除失败，请重试')
+        }
+    }, [conversationId, router, fetchConversations])
+    
     if (!isAuthChecked) {
         return null
     }
@@ -166,6 +204,7 @@ export default function ClientChatShell({
                 conversations={conversations}
                 activeId={conversationId}
                 onSelectConversation={handleSelectConversation}
+                onDeleteConversation={handleDeleteConversation}
                 onLogout={handleLogout}
             />
             

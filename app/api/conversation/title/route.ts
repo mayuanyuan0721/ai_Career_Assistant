@@ -19,8 +19,6 @@ export async function POST(req: NextRequest) {
             return Response.json({ error: "Missing params" }, { status: 400 })
         }
 
-        console.log("[TITLE] Generating title for:", conversationId);
-
         const prompt = `Please generate a concise chat title based on the following content.
 Requirements:
 1. No more than 10 Chinese characters
@@ -37,7 +35,6 @@ ${content}`;
         });
 
         const title = result.text.trim();
-        console.log("[TITLE] Generated:", title);
 
         const { data: updatedRows, error } = await supabase
             .from("conversations")
@@ -45,9 +42,6 @@ ${content}`;
             .eq("id", conversationId)
             .eq("user_id", user.id)
             .select("id, title");
-
-        console.log("[TITLE] Update result:", updatedRows);
-        console.log("[TITLE] Update error:", error);
 
         if (error) {
             console.error("[TITLE] Update failed:", error);

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 
 // Timeout helper
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, fallback: T): Promise<T> {
     return Promise.race([
         promise,
         new Promise<T>((_, reject) => 
@@ -16,7 +16,7 @@ export async function DELETE(req: Request) {
     const authResult = await withTimeout(
         supabase.auth.getUser(),
         5000,
-        { data: { user: null }, error: new Error('Auth timeout') }
+        { data: { user: null }, error: null } as any
     )
     
     const { data: { user } } = authResult
@@ -33,7 +33,7 @@ export async function DELETE(req: Request) {
     const { data: conversation, error: findError } = await withTimeout(
         supabase.from("conversations").select("id, user_id, title").eq("id", id).single(),
         5000,
-        { data: null, error: new Error('Query timeout') }
+        { data: null, error: new Error('Query timeout') } as any
     )
 
     if (findError || !conversation) {
@@ -47,7 +47,7 @@ export async function DELETE(req: Request) {
     const { error: msgError } = await withTimeout(
         supabase.from("messages").delete().eq("conversation_id", id),
         5000,
-        { error: new Error('Delete timeout') }
+        { error: new Error('Delete timeout') } as any
     )
 
     if (msgError) {
@@ -57,7 +57,7 @@ export async function DELETE(req: Request) {
     const { data: deletedRows, error } = await withTimeout(
         supabase.from("conversations").delete().eq("id", id).select("id"),
         5000,
-        { data: null, error: new Error('Delete timeout') }
+        { data: null, error: new Error('Delete timeout') } as any
     )
 
     if (error) {
@@ -79,7 +79,7 @@ export async function GET() {
     const authResult = await withTimeout(
         supabase.auth.getUser(),
         5000,
-        { data: { user: null }, error: new Error('Auth timeout') }
+        { data: { user: null }, error: null } as any
     )
     
     const { data: { user } } = authResult
@@ -96,7 +96,7 @@ export async function GET() {
             .eq("user_id", user.id)
             .order("created_at", { ascending: true }),
         5000,
-        { data: [], error: new Error('Query timeout') }
+        { data: [], error: new Error('Query timeout') } as any
     )
 
     if (error) {
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     const authResult = await withTimeout(
         supabase.auth.getUser(),
         5000,
-        { data: { user: null }, error: new Error('Auth timeout') }
+        { data: { user: null }, error: null } as any
     )
     
     const { data: { user } } = authResult
@@ -136,7 +136,7 @@ export async function POST(req: Request) {
             .select()
             .single(),
         5000,
-        { data: null, error: new Error('Insert timeout') }
+        { data: null, error: new Error('Insert timeout') } as any
     )
 
     if (error) {

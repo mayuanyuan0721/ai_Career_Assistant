@@ -12,12 +12,16 @@ interface MessageItem {
 
 interface Props {
     messages: MessageItem[]
-    isThinking: boolean
-    isStreaming: boolean
+    isLoading?: boolean
+    isThinking?: boolean
+    isStreaming?: boolean
     reportComponent?: React.ReactNode
 }
 
-export default function MessageList({ messages, isThinking, isStreaming, reportComponent }: Props) {
+export default function MessageList({ messages, isLoading, isThinking, isStreaming, reportComponent }: Props) {
+    // Support both isLoading shorthand and separate isThinking/isStreaming flags
+    const showThinking = isThinking ?? isLoading ?? false
+    const activeStreaming = isStreaming ?? false
     let lastAssistantIdx = -1
     for (let i = messages.length - 1; i >= 0; i--) {
         if (messages[i].role === "assistant") {
@@ -44,11 +48,11 @@ export default function MessageList({ messages, isThinking, isStreaming, reportC
                             key={msg.id}
                             role={msg.role as "user" | "assistant"}
                             content={msg.content}
-                            isStreaming={isStreaming && idx === lastAssistantIdx}
+                            isStreaming={activeStreaming && idx === lastAssistantIdx}
                         />
                     )
                 ))}
-                {isThinking && (
+                {showThinking && (
                     <div className="flex items-start gap-3">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium shrink-0 bg-muted">
                             {"\ud83e\udd16"}

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 
 // Timeout helper
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, fallback: T): Promise<T> {
     return Promise.race([
         promise,
         new Promise<T>((_, reject) => 
@@ -17,7 +17,7 @@ export async function GET() {
     const authResult = await withTimeout(
         supabase.auth.getUser(),
         5000,
-        { data: { user: null }, error: new Error('Auth timeout') }
+        { data: { user: null }, error: null } as any
     )
     
     const { data: { user } } = authResult

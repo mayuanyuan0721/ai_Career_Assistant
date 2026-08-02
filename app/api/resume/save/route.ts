@@ -15,21 +15,17 @@ export async function POST(req: Request) {
     }
 
     // 先尝试更新已有记录
-    const { data: updateData, error: updateError, count } = await supabase
+    const { data: updateData, error: updateError } = await supabase
         .from("resumes")
         .update({ parsed_data: resumeData, report: report })
         .eq("conversation_id", conversationId)
         .eq("user_id", user.id)
         .select();
 
-    // 如果更新成功且有行被更新
     if (!updateError && updateData && updateData.length > 0) {
-        console.log("[Resume Save] Updated existing record");
         return Response.json({ success: true, data: updateData[0] });
     }
 
-    // 没有可更新的记录，插入新记录
-    console.log("[Resume Save] No existing record found, inserting new one");
     const { data: insertData, error: insertError } = await supabase
         .from("resumes")
         .insert({
@@ -47,6 +43,5 @@ export async function POST(req: Request) {
         return Response.json({ error: insertError.message }, { status: 500 });
     }
 
-    console.log("[Resume Save] Inserted new record");
     return Response.json({ success: true, data: insertData?.[0] });
 }

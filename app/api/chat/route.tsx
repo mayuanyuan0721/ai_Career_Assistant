@@ -13,6 +13,7 @@ import { getJobs, getInterviewQuestions, getResumeExamples, formatJobsForPrompt,
 import { apiError } from "@/lib/api/http"
 import { prepareContext, estimateMessagesTokens } from "@/lib/context-manager"
 import { getUserMemories, extractAndSaveMemories } from "@/lib/memory-manager"
+import { withRetry } from "@/lib/supabase/retry"
 
 // Simple per-user rate limit: max messages within a rolling 24h window.
 // Backed by the messages table, so it survives restarts with no extra infra.
@@ -46,11 +47,24 @@ export async function POST(request: NextRequest) {
 
         // Per-user rate limit (fail open if the count query itself errors)
         const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
-        const { count, error: countErr } = await supabase
-            .from("messages")
-            .select("id", { count: "exact", head: true })
-            .eq("conversations.user_id", user.id)
-            .gte("created_at", windowStart);
+        const { data: userConversations, error: conversationsErr } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("user_id", user.id);
+
+        let count: number | null = 0;
+        let countErr = conversationsErr;
+
+        if (!conversationsErr && userConversations.length > 0) {
+            const result = await supabase
+                .from("messages")
+                .select("id", { count: "exact", head: true })
+                .in("conversation_id", userConversations.map((conversation) => conversation.id))
+                .gte("created_at", windowStart);
+
+            count = result.count;
+            countErr = result.error;
+        }
 
         if (!countErr && count !== null && count >= DAILY_MESSAGE_LIMIT) {
             return apiError("\u4eca\u65e5\u6d88\u606f\u5df2\u8fbe\u4e0a\u9650\uff0c\u8bf7\u660e\u5929\u518d\u8bd5", 429);
@@ -177,15 +191,31 @@ export async function POST(request: NextRequest) {
             (contextSummary ? `\n\n[\u65e9\u671f\u5bf9\u8bdd\u6458\u8981]\n${contextSummary}` : "");
 
         // Save user message (server-side only, exactly once)
-        const { error: msgError } = await supabase
-            .from("messages")
-            .insert({
-                conversation_id: conversationId,
-                role: "user",
-                content: userText
-            });
-        if (msgError) {
-            console.error("[CHAT] Save user message failed:", msgError);
+        console.log("[CHAT] Saving user message to DB:", {
+            conversation_id: conversationId,
+            role: "user",
+            content_length: userText.length,
+            content_preview: userText.substring(0, 50)
+        });
+        
+        try {
+            const insertData = await withRetry(async () => {
+                const { data, error } = await supabase
+                    .from("messages")
+                    .insert({
+                        conversation_id: conversationId,
+                        role: "user",
+                        content: userText
+                    })
+                    .select();
+                    
+                if (error) throw error;
+                return data;
+            }, 3, 1000); // 最多重试 3 次，每次间隔 1s
+            
+            console.log("[CHAT] User message saved successfully:", insertData);
+        } catch (saveErr) {
+            console.error("[CHAT] Save user message failed after retries:", saveErr);
         }
 
         // Kick off title generation IN PARALLEL with the chat response,
@@ -217,17 +247,31 @@ ${userText}`
                     messages: modelMessages,
 
                     onFinish: async ({ text }) => {
-                        console.log("[CHAT] onFinish: saving assistant message");
+                        console.log("[CHAT] onFinish: saving assistant message", {
+                            conversation_id: conversationId,
+                            role: "assistant",
+                            content_length: text.length,
+                            content_preview: text.substring(0, 50)
+                        });
 
-                        const { error: saveErr } = await supabase
-                            .from("messages")
-                            .insert({
-                                conversation_id: conversationId,
-                                role: "assistant",
-                                content: text
-                            });
-                        if (saveErr) {
-                            console.error("[CHAT] Save assistant message failed:", saveErr);
+                        try {
+                            const insertData = await withRetry(async () => {
+                                const { data, error } = await supabase
+                                    .from("messages")
+                                    .insert({
+                                        conversation_id: conversationId,
+                                        role: "assistant",
+                                        content: text
+                                    })
+                                    .select();
+                                    
+                                if (error) throw error;
+                                return data;
+                            }, 3, 1000);
+                            
+                            console.log("[CHAT] Assistant message saved successfully:", insertData);
+                        } catch (saveErr) {
+                            console.error("[CHAT] Save assistant message failed after retries:", saveErr);
                         }
 
                         // Cross-session memory: extract key facts from this turn

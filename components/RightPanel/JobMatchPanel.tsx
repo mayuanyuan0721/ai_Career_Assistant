@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import styles from "@/css/jobMatchPanel.module.css"
 import { MapPin, ExternalLink, Building2 } from "lucide-react"
 
@@ -10,15 +10,16 @@ interface Job {
     level: string
     experience: string
     salary: string
+    education?: string
     skills: string[]
     description: string
+    requirements?: string[]
     source: string
     location?: string
     address?: string
     company?: string
     company_size?: string
     job_url?: string
-    requirements?: string[]
 }
 
 interface Props {
@@ -35,19 +36,56 @@ export default function JobMatchPanel({ resume }: Props) {
     const [jobs, setJobs] = useState<Job[]>([])
     const [loading, setLoading] = useState(false)
     const [levelFilter, setLevelFilter] = useState<string>("")
+    const [educationFilter, setEducationFilter] = useState<string>("")
     const [fetched, setFetched] = useState(false)
-    const [selectedJob, setSelectedJob] = useState<Job | null>(null)
 
-    const userSkills: string[] = resume?.skills || []
+    const rawSkills: string[] = resume?.skills || []
 
-    const fetchJobs = useCallback(async () => {
-        if (userSkills.length === 0) return
+    // Resume skills may be long sentences like "熟悉C和Java语言，具备良好的编码习惯".
+    // Extract known tech keywords so they can match against job skill tags.
+    const TECH_KEYWORDS = [
+        "React","Vue","Vue3","Angular","Svelte","Next.js","Nuxt",
+        "TypeScript","JavaScript","ES6","HTML","CSS","Sass","Less","Tailwind",
+        "Node.js","Express","Koa","Nest","Spring","Spring Boot","SpringMVC","Mybatis",
+        "Java","Python","Go","Rust","C++","C#","PHP","Ruby","Swift","Kotlin",
+        "MySQL","PostgreSQL","MongoDB","Redis","SQLite","SQL",
+        "Webpack","Vite","Rollup","Babel","ESLint","Jest","Cypress","Vitest",
+        "Docker","Kubernetes","Linux","Nginx","Git","Maven","Gradle",
+        "AWS","Vercel","Supabase","Firebase",
+        "GraphQL","REST","gRPC","WebSocket",
+        "Electron","React Native","Flutter","UniApp","Taro",
+        "Postman","Axure","Figma","Sketch",
+    ]
+
+    const extractedSkills: string[] = useMemo(() => {
+        const found = new Set<string>()
+        const combined = rawSkills.join(" ")
+        for (const kw of TECH_KEYWORDS) {
+            if (combined.toLowerCase().includes(kw.toLowerCase())) {
+                found.add(kw)
+            }
+        }
+        // Also keep any short raw skills (≤20 chars) that look like tech tags
+        for (const s of rawSkills) {
+            if (s.length <= 20 && /^[a-zA-Z0-9.#+\-_/ ]+$/.test(s)) {
+                found.add(s)
+            }
+        }
+        return Array.from(found)
+    }, [rawSkills.join(",")])
+
+    // Use extracted keywords for API; fall back to raw if nothing extracted
+    const effectiveSkills = extractedSkills.length > 0 ? extractedSkills : rawSkills
+    const skillsKey = effectiveSkills.join(",")
+
+    const fetchJobs = useCallback(async (skills: string[], level: string) => {
+        if (skills.length === 0) return
         setLoading(true)
         try {
             const params = new URLSearchParams()
-            params.set("skills", userSkills.join(","))
+            params.set("skills", skills.join(","))
             params.set("limit", "30")
-            if (levelFilter) params.set("level", levelFilter)
+            if (level) params.set("level", level)
 
             const res = await fetch(`/api/career/jobs?${params}`)
             if (res.ok) {
@@ -60,26 +98,28 @@ export default function JobMatchPanel({ resume }: Props) {
         } finally {
             setLoading(false)
         }
-    }, [userSkills, levelFilter])
+    }, [])
 
     useEffect(() => {
-        if (userSkills.length > 0) {
-            fetchJobs()
+        if (skillsKey) {
+            fetchJobs(effectiveSkills, levelFilter)
         }
-    }, [userSkills.length, levelFilter])
-
+    }, [skillsKey, levelFilter, fetchJobs])
     function getMatchScore(job: Job): { score: number; matched: string[]; missing: string[] } {
-        if (userSkills.length === 0) return { score: 0, matched: [], missing: job.skills }
-        const userSet = new Set(userSkills.map(s => s.toLowerCase()))
+        if (effectiveSkills.length === 0) return { score: 0, matched: [], missing: job.skills }
+        const userSet = new Set(effectiveSkills.map(s => s.toLowerCase()))
         const matched = job.skills.filter(s => userSet.has(s.toLowerCase()))
         const missing = job.skills.filter(s => !userSet.has(s.toLowerCase()))
-        const score = Math.round((matched.length / job.skills.length) * 100)
+        const score = job.skills.length > 0
+            ? Math.round((matched.length / job.skills.length) * 100)
+            : 0
         return { score, matched, missing }
     }
 
-    const sortedJobs = [...jobs].sort((a, b) => {
-        return getMatchScore(b).score - getMatchScore(a).score
-    })
+    // Apply education filter client-side (no need for extra API param)
+    const sortedJobs = [...jobs]
+        .filter(j => !educationFilter || (j.education || "").includes(educationFilter))
+        .sort((a, b) => getMatchScore(b).score - getMatchScore(a).score)
 
     const avgScore = sortedJobs.length > 0
         ? Math.round(sortedJobs.reduce((sum, j) => sum + getMatchScore(j).score, 0) / sortedJobs.length)
@@ -117,7 +157,7 @@ export default function JobMatchPanel({ resume }: Props) {
 
             <div className={styles.toolbar}>
                 {[
-                    { key: "", label: "全部" },
+                    { key: "", label: "全部级别" },
                     { key: "junior", label: "初级" },
                     { key: "middle", label: "中级" },
                     { key: "senior", label: "高级" },
@@ -126,6 +166,23 @@ export default function JobMatchPanel({ resume }: Props) {
                         key={item.key}
                         className={levelFilter === item.key ? styles.active : ""}
                         onClick={() => setLevelFilter(item.key)}
+                    >
+                        {item.label}
+                    </button>
+                ))}
+            </div>
+
+            <div className={styles.toolbar} style={{ marginBottom: 10 }}>
+                {[
+                    { key: "", label: "不限学历" },
+                    { key: "大专", label: "大专" },
+                    { key: "本科", label: "本科" },
+                    { key: "硕士", label: "硕士" },
+                ].map(item => (
+                    <button
+                        key={item.key}
+                        className={educationFilter === item.key ? styles.active : ""}
+                        onClick={() => setEducationFilter(item.key)}
                     >
                         {item.label}
                     </button>
@@ -156,11 +213,10 @@ export default function JobMatchPanel({ resume }: Props) {
                                             {job.company_size && <span className={styles.companySize}>({job.company_size})</span>}
                                         </div>
                                     )}
-                                    {job.location && (
+                                    {job.address && (
                                         <div className={styles.locationInfo}>
                                             <MapPin className={styles.locationIcon} />
-                                            <span>{job.location}</span>
-                                            {job.address && <span className={styles.address}>{job.address}</span>}
+                                            <span>{job.address}</span>
                                         </div>
                                     )}
                                 </div>
@@ -170,33 +226,41 @@ export default function JobMatchPanel({ resume }: Props) {
                             </div>
 
                             <div className={styles.jobMeta}>
-                                <span className={styles.metaTag}>
-                                    {LEVEL_LABEL[job.level] || job.level}
-                                </span>
+                                <span className={styles.metaTag}>{LEVEL_LABEL[job.level] || job.level}</span>
                                 <span className={styles.metaTag}>{job.experience}</span>
                                 <span className={`${styles.metaTag} ${styles.salary}`}>{job.salary}</span>
+                                {job.education && <span className={styles.metaTag}>🎓 {job.education}</span>}
                             </div>
 
                             <div className={styles.jobSkills}>
                                 {matched.map(s => (
-                                    <span key={s} className={`${styles.skillTag} ${styles.skillMatched}`}>
-                                        ✓ {s}
-                                    </span>
+                                    <span key={s} className={`${styles.skillTag} ${styles.skillMatched}`}>✓ {s}</span>
                                 ))}
                                 {missing.map(s => (
-                                    <span key={s} className={`${styles.skillTag} ${styles.skillMatched}`}>
-                                        {s}
-                                    </span>
+                                    <span key={s} className={`${styles.skillTag} ${styles.skillMissing}`}>✗ {s}</span>
                                 ))}
                             </div>
 
-                            {job.description && (
-                                <button 
-                                    onClick={() => setSelectedJob(job)}
+                            {job.requirements && job.requirements.length > 0 && (
+                                <div className={styles.requirements}>
+                                    <div className={styles.requirementsTitle}>招聘要求</div>
+                                    <ul className={styles.requirementsList}>
+                                        {job.requirements.map((r, i) => (
+                                            <li key={i}>{r}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {job.job_url && (
+                                <a
+                                    href={job.job_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className={styles.applyButton}
                                 >
-                                    查看详情
-                                </button>
+                                    查看详情 <ExternalLink style={{ width: 12, height: 12, display: "inline", marginLeft: 4 }} />
+                                </a>
                             )}
                         </div>
                     )
@@ -204,7 +268,7 @@ export default function JobMatchPanel({ resume }: Props) {
             )}
 
             {resume && (
-                <button className={styles.refreshBtn} onClick={fetchJobs} disabled={loading}>
+                <button className={styles.refreshBtn} onClick={() => fetchJobs(effectiveSkills, levelFilter)} disabled={loading}>
                     {loading ? "⏳ 匹配中..." : "🔄 重新匹配"}
                 </button>
             )}

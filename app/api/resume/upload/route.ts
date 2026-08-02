@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     }
 
     // 先尝试带 conversation_id 插入
-    let insertData: any = { user_id: user.id, filename, content };
+    const insertData: any = { user_id: user.id, filename, content };
     if (conversationId) {
         insertData.conversation_id = conversationId;
     }

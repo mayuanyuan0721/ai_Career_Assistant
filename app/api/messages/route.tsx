@@ -46,12 +46,10 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        console.log("[MESSAGES POST] No user found");
         return Response.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await req.json();
-    console.log("[MESSAGES POST] Saving:", body.conversationId, body.role);
     const { conversationId, role, content } = body;
 
     if (!conversationId || !role || !content) {

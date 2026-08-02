@@ -46,8 +46,28 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { resume, message, conversationId } = body;
 
-    if (!message) {
+    if (!conversationId || typeof conversationId !== "string") {
+        return Response.json({ error: "缺少会话 ID" }, { status: 400 });
+    }
+    if (!message || typeof message !== "string") {
         return Response.json({ error: "缺少消息内容" }, { status: 400 });
+    }
+    if (message.length > 8000) {
+        return Response.json({ error: "消息过长（最多 8000 字）" }, { status: 400 });
+    }
+
+    // Verify the conversation belongs to the current user
+    const { data: conversation } = await supabase
+        .from("conversations")
+        .select("id, user_id")
+        .eq("id", conversationId)
+        .single();
+
+    if (!conversation) {
+        return Response.json({ error: "会话不存在" }, { status: 404 });
+    }
+    if (conversation.user_id !== user.id) {
+        return Response.json({ error: "无权访问该会话" }, { status: 403 });
     }
 
     try {
@@ -82,17 +102,21 @@ export async function POST(req: Request) {
 # 题库参考
 ${formatInterviewForPrompt([
     ...questions.slice(0, 2),
-    { category: "general", level: "junior", question: "请介绍一下你最近做的项目？", answer: "" }
+    { category: "general", level: "junior", question: "请介绍一下你最近做的项目？" }
 ])}`;
 
             // 保存面试开场白作为第一条消息
             const introMessage = `👋 你好！我是你的 AI 面试官。我将根据你的简历和你申请的技术岗位提问一些技术问题。\n\n**问题 1：${firstQn}**\n\n请开始你的回答...`;
             
-            await supabase.from("messages").insert({
+            // 开场白加幂等键，防止网络重试导致重复插入
+            const introKey = `${conversationId}-intro`
+            const { error: introErr } = await supabase.from("messages").insert({
+                idempotency_key: introKey,
                 conversation_id: conversationId,
                 role: "assistant",
                 content: introMessage
-            });
+            })
+            if (introErr && introErr.code !== "23505") throw introErr;
         } else {
             // 后续问题
             const relevantQuestions = getInterviewQuestions({ category: "react", limit: 10 });
@@ -101,8 +125,6 @@ ${existingMessages.map(m => m.content).join("\n\n")}\n\n# 题库参考（可选�
 ${formatInterviewForPrompt(relevantQuestions)}\n\n# 指令
 请先给用户本次回答评分（1-10 分）和改进建议，然后提出下一个新的问题。`;
         }
-
-        console.log("[Interview] System prompt:", systemPrompt.substring(0, 100));
 
         const result = await generateText({
             model: deepseek("deepseek-v4-flash"),

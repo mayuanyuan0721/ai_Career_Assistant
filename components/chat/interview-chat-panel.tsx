@@ -41,9 +41,6 @@ export default function InterviewChatPanel({
     onInterviewUpdate,
 }: Props) {
     const [showAuth, setShowAuth] = useState(false)
-    const conversationIdRef = useRef(conversationId)
-
-    useEffect(() => { conversationIdRef.current = conversationId }, [conversationId])
 
     const transport = useMemo(() => {
         return new DefaultChatTransport({
@@ -65,14 +62,14 @@ export default function InterviewChatPanel({
                 return {
                     body: {
                         message: lastMessage,
-                        conversationId: conversationIdRef.current,
+                        conversationId,
                         mode: 'interview',
                         interviewData: interviewData,
                     },
                 }
             },
         })
-    }, [interviewData])
+    }, [conversationId, interviewData])
 
     const { messages, sendMessage, status, stop, setMessages } = useChat({
         id: conversationId,
@@ -100,6 +97,16 @@ export default function InterviewChatPanel({
     const isLoading = isStreaming || status === "submitted"
 
     const currentQuestion = interviewData?.questions[interviewData.currentPosition]
+    const adaptedMessages = useMemo(() => {
+        return messages.map((message) => ({
+            id: message.id,
+            role: message.role === "system" ? "assistant" : (message.role as "user" | "assistant"),
+            content: message.parts
+                ?.filter((part) => part.type === "text")
+                .map((part) => (part as { text?: string }).text || "")
+                .join("") || "",
+        }))
+    }, [messages])
 
     return (
         <div className="flex flex-col h-full">
@@ -145,7 +152,7 @@ export default function InterviewChatPanel({
             )}
 
             <div className="flex-1 overflow-y-auto">
-                <MessageList messages={messages} isLoading={isLoading} />
+                <MessageList messages={adaptedMessages} isLoading={isLoading} />
             </div>
 
             <Separator />

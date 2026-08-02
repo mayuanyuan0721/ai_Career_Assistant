@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -14,14 +13,18 @@ interface Props {
     onSelectConversation: (id: string) => void
     activeId: string
     onDeleteConversation: (id: string) => void
-    isLogin: boolean
+    isLogin?: boolean
+    conversations?: Conversation[]
+    refreshKey?: number
+    onLogout?: () => void
 }
 
-export default function Sidebar({ onSelectConversation, activeId, onDeleteConversation, isLogin }: Props) {
+export default function Sidebar({ conversations: propConversations, onSelectConversation, activeId, onDeleteConversation, isLogin = true }: Props) {
     const router = useRouter()
     
     // Get conversations directly from Zustand store
-    const { conversations } = useAppStore()
+    const { conversations: storeConversations } = useAppStore()
+    const conversations = propConversations ?? storeConversations
     
     const getIcon = (type: string) => {
         switch (type) {
@@ -78,4 +81,3 @@ export default function Sidebar({ onSelectConversation, activeId, onDeleteConver
         </div>
     )
 }
-

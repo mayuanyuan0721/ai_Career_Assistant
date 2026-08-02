@@ -31,7 +31,9 @@ const JOB_TEMPLATES = [
   { title: "AI前端工程师", skills: ["React", "TypeScript", "LangChain.js", "WebSocket", "Canvas"], salary: { junior: "15-22k", middle: "22-35k", senior: "35-60k" } },
 ]
 
-const LEVELS = ["junior", "middle", "senior"]
+type Level = "junior" | "middle" | "senior"
+
+const LEVELS: Level[] = ["junior", "middle", "senior"]
 const LEVEL_NAMES = { junior: "初级", middle: "中级", senior: "高级" }
 const EXPERIENCE = { junior: "1-3年", middle: "3-5年", senior: "5年以上" }
 

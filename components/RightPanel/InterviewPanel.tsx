@@ -90,7 +90,7 @@ export default function InterviewPanel({ resume }: Props) {
     }
 
     const restartInterview = () => {
-        window.location.href = `/chat/new`
+        window.location.href = `/chat`
     }
 
     if (!resume) {
@@ -181,7 +181,7 @@ export default function InterviewPanel({ resume }: Props) {
             )}
 
             {/* 输入框 */}
-            <ChatInput onSend={handleInterviewSubmit} disabled={loading} />
+            <ChatInput onSend={handleInterviewSubmit} isLoading={loading} />
         </div>
     )
 }

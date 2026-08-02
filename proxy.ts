@@ -1,4 +1,4 @@
-﻿import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Refresh the Supabase session on every request so that API routes
@@ -29,19 +29,15 @@ export async function proxy(req: NextRequest) {
         }
     );
 
-    // IMPORTANT: getUser() triggers the token refresh when it is close to
-    // expiry; the refreshed cookies are written back via setAll above.
-    // Do NOT add redirect logic here — the app allows visiting /chat while
-    // logged out (login modal is shown client-side).
-    await supabase.auth.getUser();
-
+    // ⚡ 优化：不要每次都 await getUser()，让后端 API 按需刷新 token
+    // 只传递 cookie，不进行验证
+    
     return response;
 }
 
 export const config = {
     matcher: [
         // Run on all routes except static assets
-        "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)"
+        "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|json)$).*)"
     ]
 };
-

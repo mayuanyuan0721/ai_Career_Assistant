@@ -6,8 +6,6 @@ export default async function ChatDetailPage({ params }: { params: Promise<{ id:
     const { id } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-
-    // Fetch conversation with type field
     const { data: conversation } = await supabase
         .from("conversations")
         .select("id, title, user_id, type, interview_data")

@@ -9,6 +9,7 @@ import { LogOut, User, Mic, ArrowLeft } from "lucide-react"
 import MessageList from "./message-list"
 import ChatInput from "./chat-input"
 import ModeSelector from "./mode-selector"
+import ResumeAnalysis from "@/components/Resume/ResumeAnalysis"
 import { Mode, ConversationType } from "@/types/chat"
 import { ResumeReport } from "@/types/resume"
 import AuthModal from "@/components/auth/auth-modal"
@@ -48,15 +49,7 @@ export default function ChatPanel({
     resume,
     report,
 }: Props) {
-    const modeRef = useRef(mode)
-    const resumeRef = useRef(resume)
-    const conversationIdRef = useRef(conversationId)
-
     const [showAuth, setShowAuth] = useState(false)
-
-    useEffect(() => { modeRef.current = mode }, [mode])
-    useEffect(() => { resumeRef.current = resume }, [resume])
-    useEffect(() => { conversationIdRef.current = conversationId }, [conversationId])
 
     const transport = useMemo(() => {
         return new DefaultChatTransport({
@@ -78,14 +71,14 @@ export default function ChatPanel({
                 return {
                     body: {
                         message: lastMessage,
-                        conversationId: conversationIdRef.current,
-                        mode: modeRef.current,
-                        resume: resumeRef.current,
+                        conversationId,
+                        mode,
+                        resume,
                     },
                 }
             },
         })
-    }, [])
+    }, [conversationId, mode, resume])
 
     const { messages, sendMessage, status, stop, setMessages } = useChat({
         id: conversationId,
@@ -96,6 +89,7 @@ export default function ChatPanel({
     useEffect(() => {
         if (initializedRef.current || initialMessages.length === 0) return
         initializedRef.current = true
+        console.log('[ChatPanel] Setting initial messages:', initialMessages.length)
         setMessages(initialMessages as any)
     }, [initialMessages, setMessages])
 
@@ -232,7 +226,11 @@ export default function ChatPanel({
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                <MessageList messages={adaptedMessages} isLoading={isLoading} />
+                <MessageList
+                    messages={adaptedMessages}
+                    isLoading={isLoading}
+                    reportComponent={report ? <ResumeAnalysis report={report} /> : undefined}
+                />
             </div>
 
             <Separator />

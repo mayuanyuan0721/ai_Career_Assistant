@@ -87,7 +87,7 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
         console.log('[Store] checkAuth called')
         try {
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 5000)
+            const timeoutId = setTimeout(() => controller.abort(), 8000) // ⚡ 增加到 8s
             const res = await fetch('/api/auth/user', { signal: controller.signal })
             clearTimeout(timeoutId)
             
@@ -96,26 +96,39 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
                 if (data.user) get().setAuth(data.user)
             }
         } catch (err) {
-            console.debug('[Store] Auth check skipped:', err.message)
+            console.debug('[Store] Auth check skipped:', err instanceof Error ? err.message : String(err))
         }
     },
     
     fetchConversations: async () => {
         console.log('[Store] fetchConversations called')
-        try {
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 5000)
-            const res = await fetch('/api/conversations', { signal: controller.signal })
-            clearTimeout(timeoutId)
-            
-            if (!res.ok) throw new Error('Failed')
-            const data = await res.json().catch(() => ({ conversations: [] }))
-            set({ conversations: data.conversations || [] })
-            return data.conversations || []
-        } catch (err) {
-            console.warn('[Store] Fetch conversations skipped')
-            return []
+        
+        // 尝试最多 2 次
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                const controller = new AbortController()
+                const timeoutId = setTimeout(() => controller.abort(), 8000) // ⚡ 增加到 8s
+                const res = await fetch('/api/conversations', { signal: controller.signal })
+                clearTimeout(timeoutId)
+                
+                if (!res.ok) throw new Error('Failed')
+                const data = await res.json().catch(() => ({ conversations: [] }))
+                const conversations = data.conversations || []
+                console.log('[Store] Fetched conversations:', conversations.length)
+                set({ conversations })
+                console.log('[Store] Updated conversations in store:', get().conversations.length)
+                return conversations
+            } catch (err) {
+                console.warn(`[Store] Fetch conversations attempt ${attempt} failed:`, err instanceof Error ? err.message : String(err))
+                if (attempt === 2) {
+                    // 最后一次失败，返回空数组
+                    return []
+                }
+                // 等待 500ms 后重试
+                await new Promise(resolve => setTimeout(resolve, 500))
+            }
         }
+        return []
     },
     
     loadMessages: async (conversationId: string) => {
@@ -127,7 +140,7 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
         
         try {
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 10000)
+            const timeoutId = setTimeout(() => controller.abort(), 10000) // ⚡ 增加到 10s
             const res = await fetch(`/api/messages?conversationId=${conversationId}`, { signal: controller.signal })
             clearTimeout(timeoutId)
             
@@ -178,4 +191,3 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
         return get().conversations.filter(conv => conv.type === type)
     }
 }))
-

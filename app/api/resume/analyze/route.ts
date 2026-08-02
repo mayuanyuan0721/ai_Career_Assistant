@@ -3,8 +3,15 @@ import { deepseek } from "@/lib/deepseek/ai";
 import { generateText } from "ai";
 import { buildAnalyzePrompt } from "@/lib/prompts/resume";
 import { getJobs, getResumeExamples, formatJobsForPrompt, formatExamplesForPrompt } from "@/lib/career-data/loader";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ error: "未登录" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const resume = body.resume;
@@ -18,7 +25,7 @@ export async function POST(req: NextRequest) {
       jobsStr = formatJobsForPrompt(jobs);
       const examples = getResumeExamples({ limit: 2 });
       examplesStr = formatExamplesForPrompt(examples);
-      console.log("[ANALYZE] Injected", jobs.length, "jobs,", examples.length, "examples");
+
     } catch (e) {
       console.warn("[ANALYZE] Market data injection failed (non-critical):", e);
     }

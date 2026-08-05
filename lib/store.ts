@@ -111,6 +111,13 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
                 const res = await fetch('/api/conversations', { signal: controller.signal })
                 clearTimeout(timeoutId)
                 
+                // 未登录时直接返回空数组，不重试
+                if (res.status === 401) {
+                    console.log('[Store] User not logged in, returning empty conversations')
+                    set({ conversations: [] })
+                    return []
+                }
+                
                 if (!res.ok) throw new Error('Failed')
                 const data = await res.json().catch(() => ({ conversations: [] }))
                 const conversations = data.conversations || []

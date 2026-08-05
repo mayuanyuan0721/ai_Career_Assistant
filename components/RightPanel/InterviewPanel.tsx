@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAppStore } from "@/lib/store"
 import styles from "@/css/interviewPanel.module.css"
 import ChatInput from "@/components/chat/chat-input"
+import IndustrySelector from "@/components/ui/industry-selector"
 
 interface Message {
     role: "user" | "assistant"
@@ -23,6 +24,7 @@ export default function InterviewPanel({ resume }: Props) {
     const [feedback, setFeedback] = useState<string>("")
     const [loading, setLoading] = useState(false)
     const [isStart, setIsStart] = useState(false)
+    const [selectedIndustry, setSelectedIndustry] = useState<string>("frontend")
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
     // 当前会话 ID（从 store 获取）
@@ -49,7 +51,8 @@ export default function InterviewPanel({ resume }: Props) {
                 body: JSON.stringify({
                     resume,
                     message: text,
-                    conversationId
+                    conversationId,
+                    industry: selectedIndustry  // 传递行业参数
                 })
             })
 
@@ -111,6 +114,15 @@ export default function InterviewPanel({ resume }: Props) {
             <div className={styles.panel}>
                 <h2>模拟面试</h2>
                 <p className={styles.subTitle}>AI Career Assistant</p>
+                
+                {/* 行业选择器 */}
+                <div style={{ marginBottom: "12px" }}>
+                    <IndustrySelector 
+                        value={selectedIndustry} 
+                        onChange={setSelectedIndustry} 
+                    />
+                </div>
+                
                 <div className={styles.introText}>
                     <strong>🎯 模拟面试模式</strong><br/>
                     AI 面试官将根据你的简历进行技术面试。<br/><br/>

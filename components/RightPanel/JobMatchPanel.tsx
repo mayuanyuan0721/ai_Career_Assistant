@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import styles from "@/css/jobMatchPanel.module.css"
 import { MapPin, ExternalLink, Building2 } from "lucide-react"
+import IndustrySelector from "@/components/ui/industry-selector"
+import { calculateMatchScore, getMatchLevel, getMatchSuggestions } from "@/lib/career-data/skill-matcher"
 
 interface Job {
     id: string
@@ -38,6 +40,7 @@ export default function JobMatchPanel({ resume }: Props) {
     const [levelFilter, setLevelFilter] = useState<string>("")
     const [educationFilter, setEducationFilter] = useState<string>("")
     const [fetched, setFetched] = useState(false)
+    const [selectedIndustry, setSelectedIndustry] = useState<string>("frontend")
 
     const rawSkills: string[] = resume?.skills || []
 
@@ -78,16 +81,17 @@ export default function JobMatchPanel({ resume }: Props) {
     const effectiveSkills = extractedSkills.length > 0 ? extractedSkills : rawSkills
     const skillsKey = effectiveSkills.join(",")
 
-    const fetchJobs = useCallback(async (skills: string[], level: string) => {
+    const fetchJobs = useCallback(async (skills: string[], level: string, industry: string) => {
         if (skills.length === 0) return
         setLoading(true)
         try {
+            // 使用新的行业 API
             const params = new URLSearchParams()
-            params.set("skills", skills.join(","))
+            params.set("industry", industry)
             params.set("limit", "30")
             if (level) params.set("level", level)
 
-            const res = await fetch(`/api/career/jobs?${params}`)
+            const res = await fetch(`/api/jobs?${params}`)
             if (res.ok) {
                 const data = await res.json()
                 setJobs(data.jobs || [])
@@ -102,18 +106,20 @@ export default function JobMatchPanel({ resume }: Props) {
 
     useEffect(() => {
         if (skillsKey) {
-            fetchJobs(effectiveSkills, levelFilter)
+            console.log('[JobMatch] Fetching jobs for industry:', selectedIndustry, 'skills:', effectiveSkills)
+            fetchJobs(effectiveSkills, levelFilter, selectedIndustry)
         }
-    }, [skillsKey, levelFilter, fetchJobs])
+    }, [skillsKey, levelFilter, selectedIndustry, fetchJobs])
+    
+    // 添加手动刷新功能
+    const handleRefresh = useCallback(() => {
+        console.log('[JobMatch] Manual refresh triggered')
+        setFetched(false) // 重置状态以触发重新获取
+        fetchJobs(effectiveSkills, levelFilter, selectedIndustry)
+    }, [effectiveSkills, levelFilter, selectedIndustry, fetchJobs])
     function getMatchScore(job: Job): { score: number; matched: string[]; missing: string[] } {
-        if (effectiveSkills.length === 0) return { score: 0, matched: [], missing: job.skills }
-        const userSet = new Set(effectiveSkills.map(s => s.toLowerCase()))
-        const matched = job.skills.filter(s => userSet.has(s.toLowerCase()))
-        const missing = job.skills.filter(s => !userSet.has(s.toLowerCase()))
-        const score = job.skills.length > 0
-            ? Math.round((matched.length / job.skills.length) * 100)
-            : 0
-        return { score, matched, missing }
+        // 使用智能技能匹配算法
+        return calculateMatchScore(effectiveSkills, job.skills, selectedIndustry)
     }
 
     // Apply education filter client-side (no need for extra API param)
@@ -144,6 +150,14 @@ export default function JobMatchPanel({ resume }: Props) {
         <div className={styles.panel}>
             <h2>岗位匹配</h2>
             <p className={styles.subTitle}>AI Career Assistant</p>
+
+            {/* 行业选择器 */}
+            <div style={{ marginBottom: "12px" }}>
+                <IndustrySelector 
+                    value={selectedIndustry} 
+                    onChange={setSelectedIndustry} 
+                />
+            </div>
 
             {fetched && sortedJobs.length > 0 && (
                 <div className={styles.summary}>
@@ -241,6 +255,24 @@ export default function JobMatchPanel({ resume }: Props) {
                                 ))}
                             </div>
 
+                            {/* 智能匹配建议 */}
+                            {getMatchSuggestions(effectiveSkills, job.skills, selectedIndustry).length > 0 && (
+                                <div style={{ 
+                                    marginTop: "8px", 
+                                    padding: "8px", 
+                                    background: "#f0f9ff", 
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
+                                    color: "#0369a1"
+                                }}>
+                                    {getMatchSuggestions(effectiveSkills, job.skills, selectedIndustry).map((suggestion, idx) => (
+                                        <div key={idx} style={{ marginTop: idx > 0 ? "4px" : 0 }}>
+                                            {suggestion}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {job.requirements && job.requirements.length > 0 && (
                                 <div className={styles.requirements}>
                                     <div className={styles.requirementsTitle}>招聘要求</div>
@@ -268,7 +300,7 @@ export default function JobMatchPanel({ resume }: Props) {
             )}
 
             {resume && (
-                <button className={styles.refreshBtn} onClick={() => fetchJobs(effectiveSkills, levelFilter)} disabled={loading}>
+                <button className={styles.refreshBtn} onClick={handleRefresh} disabled={loading}>
                     {loading ? "⏳ 匹配中..." : "🔄 重新匹配"}
                 </button>
             )}

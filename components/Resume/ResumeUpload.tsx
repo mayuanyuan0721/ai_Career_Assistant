@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { ResumeReport } from "@/types/resume"
+import IndustrySelector from "@/components/ui/industry-selector"
 
 interface Props {
     onParsed: (data: any) => void
@@ -9,11 +11,19 @@ interface Props {
     onAnalysisStart: () => void
     conversationId: string;
     onTitleUpdate: () => void;
+    industry?: string;  // 新增行业参数
 }
 
 const ACCEPTED_TYPES = ".md,.txt,.pdf,.docx";
 
-export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAnalysisStart, conversationId, onTitleUpdate }: Props) {
+export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAnalysisStart, conversationId, onTitleUpdate, industry = "frontend" }: Props) {
+    const [selectedIndustry, setSelectedIndustry] = useState<string>(industry)
+    
+    // 当外部 industry 变化时，同步更新内部状态
+    useState(() => {
+        setSelectedIndustry(industry)
+    })
+    
     async function uploadFile(e: React.ChangeEvent<HTMLInputElement>) {
         if (!conversationId) {
             alert("请先点击「新对话」");
@@ -67,15 +77,21 @@ export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAn
             // 4. Deep analyze with structured report
             onAnalysisStart();
 
-            // Generate user profile (non-critical)
+            // Generate user profile (non-critical, skip if not logged in)
             try {
                 const profileRes = await fetch("/api/profile/generate", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ resume })
                 });
-                const profileData = await profileRes.json();
-                console.log("[RESUME] User profile:", profileData);
+                
+                // Skip if not logged in (401)
+                if (profileRes.status === 401) {
+                    console.log("[RESUME] Profile generation skipped (not logged in)");
+                } else {
+                    const profileData = await profileRes.json();
+                    console.log("[RESUME] User profile:", profileData);
+                }
             } catch (profileErr) {
                 console.warn("[RESUME] Profile generation failed (non-critical):", profileErr);
             }
@@ -84,7 +100,11 @@ export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAn
             const analyzeRes = await fetch("/api/resume/analyze", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ resume, skills: resume.skills || [] })
+                body: JSON.stringify({ 
+                    resume, 
+                    skills: resume.skills || [],
+                    industry: selectedIndustry  // 传递行业参数
+                })
             });
 
             if (!analyzeRes.ok) {
@@ -140,7 +160,7 @@ export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAn
                 console.warn("[RESUME] Title generation failed (non-critical):", titleErr);
             }
 
-            // 6. Save analysis summary as a message
+            // 6. Save analysis summary as a message (non-critical, skip if not logged in)
             try {
                 const summary = analyzeData.data.summary || "简历分析完成";
                 const msgRes = await fetch("/api/messages", {
@@ -154,12 +174,17 @@ export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAn
                 });
                 if (!msgRes.ok) {
                     const errData = await msgRes.json().catch(() => ({}));
-                    console.error("[RESUME] Save message failed:", msgRes.status, errData);
+                    // 静默处理 401（未登录）和 404（对话不存在）错误
+                    if (msgRes.status === 401 || msgRes.status === 404) {
+                        console.log("[RESUME] Message save skipped (not logged in or conversation not found)");
+                    } else {
+                        console.error("[RESUME] Save message failed:", msgRes.status, errData);
+                    }
                 } else {
                     console.log("[RESUME] Analysis message saved");
                 }
             } catch (msgErr) {
-                console.error("[RESUME] Save message error:", msgErr);
+                console.warn("[RESUME] Save message error (non-critical):", msgErr);
             }
 
         } catch (err) {

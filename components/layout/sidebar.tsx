@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Trash2, Plus, MessageSquare, Mic } from "lucide-react"
+import { Trash2, Plus, MessageSquare, Mic, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
 import { useAppStore } from "@/lib/store"
@@ -78,6 +78,18 @@ export default function Sidebar({ conversations: propConversations, onSelectConv
                     ))}
                 </div>
             </ScrollArea>
+            <Separator />
+            <div className="p-2">
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full justify-start" 
+                    onClick={() => router.push("/settings")}
+                >
+                    <Settings className="h-4 w-4 mr-2" />
+                    数据更新设置
+                </Button>
+            </div>
         </div>
     )
 }

@@ -278,8 +278,13 @@ export function buildInterviewPrompt(questions?: string): string {
 
 // ─── Analysis Prompt Builder with Market Data ──────────────────────────────
 
-export function buildAnalyzePrompt(jobs?: string, examples?: string): string {
+export function buildAnalyzePrompt(jobs?: string, examples?: string, jobTitle?: string): string {
   let prompt = resumeAnalyzePrompt;
+  
+  // 替换目标岗位
+  if (jobTitle) {
+    prompt = prompt.replace(/前端/g, jobTitle);
+  }
 
   if (jobs || examples) {
     prompt += "\n\n# 市场参考数据\n\n";

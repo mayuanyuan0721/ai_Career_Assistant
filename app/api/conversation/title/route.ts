@@ -45,13 +45,15 @@ ${content}`;
 
         if (error) {
             console.error("[TITLE] Update failed:", error);
-            return Response.json({ error: error.message }, { status: 500 })
+            // 不返回错误，让标题保持为 null
+            return Response.json({ title: null });
         }
 
         if (!updatedRows || updatedRows.length === 0) {
-            console.error("[TITLE] WARNING: 0 rows updated! RLS policy might be blocking UPDATE.");
-            console.error("[TITLE] Please add UPDATE RLS policy for conversations table.");
-            return Response.json({ error: "Title not saved - RLS blocking" }, { status: 500 })
+            console.warn("[TITLE] WARNING: 0 rows updated! RLS policy might be blocking UPDATE.");
+            console.warn("[TITLE] Please add UPDATE RLS policy for conversations table.");
+            // 不返回错误，让标题保持为 null
+            return Response.json({ title: null });
         }
 
         return Response.json({ title });

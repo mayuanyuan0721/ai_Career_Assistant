@@ -7,6 +7,7 @@ import Sidebar from "@/components/layout/sidebar"
 import ChatPanel from "@/components/chat/chat-panel"
 import RightPanel from "@/components/RightPanel"
 import AuthModal from "@/components/auth/auth-modal"
+import ResumePreview from "@/components/Resume/ResumePreview"
 import { Mode, ConversationType } from "@/types/chat"
 import { ResumeReport, OptimizedSection } from "@/types/resume"
 import { InterviewData } from "@/types/chat"
@@ -97,8 +98,12 @@ export default function ClientChatShell({
             user: localUser
         })
         
-        checkAuth().catch(console.error)
-        fetchConversations().catch(console.error)
+        checkAuth().catch(() => {
+            // 静默处理，未登录时不打印错误
+        })
+        fetchConversations().catch(() => {
+            // 静默处理，未登录时不打印错误
+        })
     }, [initialConversationId, initialMessages, localUser])
     
     const currentConversation = getConversationById(conversationId)
@@ -145,7 +150,7 @@ export default function ClientChatShell({
     }, [])
     
     const handleSectionOptimized = useCallback((key: string, optimized: string) => {
-        setOptimizedSections(prev => ({ ...prev, [key]: { optimized, accepted: false } }))
+        setOptimizedSections(prev => ({ ...prev, [key]: { optimized, accepted: true } }))
     }, [])
     
     const handleShowPreview = useCallback(() => {
@@ -240,6 +245,15 @@ export default function ClientChatShell({
             </div>
             
             <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
+            
+            {/* Resume Preview Modal */}
+            {showPreview && resume && (
+                <ResumePreview
+                    resume={resume}
+                    optimizedSections={optimizedSections}
+                    onClose={() => setShowPreview(false)}
+                />
+            )}
         </div>
     )
 }

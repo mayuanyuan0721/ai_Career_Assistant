@@ -15,7 +15,22 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const resume = body.resume;
+    const industry = body.industry || "frontend";  // 接收行业参数
     const userSkills: string[] = body.skills || resume?.skills || [];
+
+    // 根据行业设置岗位名称
+    const industryJobTitle: Record<string, string> = {
+      frontend: "前端开发工程师",
+      backend: "后端开发工程师",
+      design: "UI/UX设计师",
+      product: "产品经理",
+      data: "数据分析师",
+      mobile: "移动开发工程师",
+      testing: "测试工程师",
+      devops: "运维工程师",
+    };
+    
+    const jobTitle = industryJobTitle[industry] || "前端开发工程师";
 
     // Inject market data
     let jobsStr: string | undefined;
@@ -30,7 +45,7 @@ export async function POST(req: NextRequest) {
       console.warn("[ANALYZE] Market data injection failed (non-critical):", e);
     }
 
-    const prompt = buildAnalyzePrompt(jobsStr, examplesStr);
+    const prompt = buildAnalyzePrompt(jobsStr, examplesStr, jobTitle);
 
     const result = await generateText({
       model: deepseek("deepseek-v4-flash"),

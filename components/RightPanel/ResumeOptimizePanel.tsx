@@ -3,6 +3,7 @@
 import { useState } from "react"
 import styles from "@/css/resumePanel.module.css"
 import ResumeUpload from "@/components/Resume/ResumeUpload"
+import IndustrySelector from "@/components/ui/industry-selector"
 import { ResumeReport, OptimizedSection } from "@/types/resume"
 
 
@@ -29,6 +30,7 @@ export default function ResumeOptimizePanel({
 
     const [optimizingKey, setOptimizingKey] = useState<string | null>(null);
     const [optimizeResult, setOptimizeResult] = useState<any>(null);
+    const [selectedIndustry, setSelectedIndustry] = useState<string>("frontend");
 
     async function handleDeepOptimize(section: any, index: number) {
         const key = `${section.type}_${index}`;
@@ -71,6 +73,14 @@ export default function ResumeOptimizePanel({
             <h2>简历优化</h2>
             <p className={styles.subTitle}>AI Career Assistant</p>
 
+            {/* 行业选择器 */}
+            <div style={{ marginBottom: "12px" }}>
+                <IndustrySelector 
+                    value={selectedIndustry} 
+                    onChange={setSelectedIndustry} 
+                />
+            </div>
+
             {!resume ? (
                 <div className={styles.empty}>
                     <h3>上传你的简历</h3>
@@ -82,7 +92,8 @@ export default function ResumeOptimizePanel({
                             onParsed={onResumeChange}
                             onAnalysisStart={() => { onAnalyzingChange(true) }}
                             onAnalysisEnd={() => { onAnalyzingChange(false) }}
-                            onTitleUpdate={onTitleUpdate} />
+                            onTitleUpdate={onTitleUpdate}
+                            industry={selectedIndustry} />
                     )}
                 </div>
             ) : (
@@ -201,7 +212,8 @@ export default function ResumeOptimizePanel({
                                 onParsed={onResumeChange}
                                 onAnalysisStart={() => { onAnalyzingChange(true) }}
                                 onAnalysisEnd={() => { onAnalyzingChange(false) }}
-                                onTitleUpdate={onTitleUpdate} />
+                                onTitleUpdate={onTitleUpdate}
+                                industry={selectedIndustry} />
                         </div>
                     )}
                 </div>

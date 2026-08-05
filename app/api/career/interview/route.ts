@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { resume, message, conversationId } = body;
+    const { resume, message, conversationId, industry = "frontend" } = body;
 
     if (!conversationId || typeof conversationId !== "string") {
         return Response.json({ error: "缺少会话 ID" }, { status: 400 });
@@ -81,12 +81,36 @@ export async function POST(req: Request) {
 
         let systemPrompt = "";
         
+        // 根据行业设置岗位名称
+        const industryJobTitle: Record<string, string> = {
+            frontend: "前端开发工程师",
+            backend: "后端开发工程师",
+            design: "UI/UX设计师",
+            product: "产品经理",
+            data: "数据分析师",
+            mobile: "移动开发工程师",
+            testing: "测试工程师",
+            devops: "运维工程师",
+        };
+        
+        const jobTitle = industryJobTitle[industry] || "前端开发工程师";
+        
         if (!existingMessages || existingMessages.length === 0) {
-            // 第一题：根据简历生成问题
+            // 第一题：根据简历和行业生成问题
             const skills: string[] = resume?.skills || [];
-            const category = ["react", "vue", "angular", "typescript", "nodejs"].find(k => 
-                skills.some(s => s.toLowerCase().includes(k))
-            ) || "react";
+            
+            // 根据行业选择不同的问题分类
+            const categoryMap: Record<string, string> = {
+                frontend: "react",
+                backend: "java",
+                design: "design",
+                product: "product",
+                data: "data",
+                mobile: "mobile",
+                testing: "testing",
+                devops: "devops",
+            };
+            const category = categoryMap[industry] || "react";
             
             const questions = getInterviewQuestions({ category, limit: 3 });
             const firstQn = questions[0]?.question || "请介绍一下你最近做的项目？";
@@ -99,6 +123,9 @@ export async function POST(req: Request) {
 3. 对用户的问题进行评分（1-10 分）并给出改进建议
 4. 保持友好专业的氛围，鼓励用户
 
+# 目标岗位
+${jobTitle}
+
 # 题库参考
 ${formatInterviewForPrompt([
     ...questions.slice(0, 2),
@@ -106,7 +133,7 @@ ${formatInterviewForPrompt([
 ])}`;
 
             // 保存面试开场白作为第一条消息
-            const introMessage = `👋 你好！我是你的 AI 面试官。我将根据你的简历和你申请的技术岗位提问一些技术问题。\n\n**问题 1：${firstQn}**\n\n请开始你的回答...`;
+            const introMessage = `👋 你好！我是你的 AI 面试官。我将根据你的简历和你申请的 **${jobTitle}** 岗位提问一些技术问题。\n\n**问题 1：${firstQn}**\n\n请开始你的回答...`;
             
             // 开场白加幂等键，防止网络重试导致重复插入
             const introKey = `${conversationId}-intro`
@@ -119,8 +146,19 @@ ${formatInterviewForPrompt([
             if (introErr && introErr.code !== "23505") throw introErr;
         } else {
             // 后续问题
-            const relevantQuestions = getInterviewQuestions({ category: "react", limit: 10 });
-            systemPrompt = `你是一名资深技术面试官，正在进行一对一的模拟面试。\n\n# 面试流程\n1. 对用户的回答进行评分（1-10 分）\n2. 给出具体的改进建议，指出优点和不足\n3. 提出下一个相关问题\n4. 保持专业友好的态度\n\n# 当前用户状态\n- 技能：${resume?.skills?.join(", ") || "未知"}\n- 目标岗位：前端开发工程师\n\n# 之前的面试对话（仅用于上下文，不要重复问题）\n请将以下视为历史记录，但只基于最后一轮回复：
+            const categoryMap: Record<string, string> = {
+                frontend: "react",
+                backend: "java",
+                design: "design",
+                product: "product",
+                data: "data",
+                mobile: "mobile",
+                testing: "testing",
+                devops: "devops",
+            };
+            const category = categoryMap[industry] || "react";
+            const relevantQuestions = getInterviewQuestions({ category, limit: 10 });
+            systemPrompt = `你是一名资深技术面试官，正在进行一对一的模拟面试。\n\n# 面试流程\n1. 对用户的回答进行评分（1-10 分）\n2. 给出具体的改进建议，指出优点和不足\n3. 提出下一个相关问题\n4. 保持专业友好的态度\n\n# 当前用户状态\n- 技能：${resume?.skills?.join(", ") || "未知"}\n- 目标岗位：${jobTitle}\n\n# 之前的面试对话（仅用于上下文，不要重复问题）\n请将以下视为历史记录，但只基于最后一轮回复：
 ${existingMessages.map(m => m.content).join("\n\n")}\n\n# 题库参考（可选用）
 ${formatInterviewForPrompt(relevantQuestions)}\n\n# 指令
 请先给用户本次回答评分（1-10 分）和改进建议，然后提出下一个新的问题。`;

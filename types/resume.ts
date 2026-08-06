@@ -12,6 +12,8 @@ export interface ReportSection {
   optimized: string;
   changes: string[];
   suggested_add?: string[];
+  expression_level?: "weak" | "strong" | "mixed";
+  expression_issues?: string[];
   score: number;
 }
 
@@ -22,7 +24,21 @@ export interface ResumeReport {
   keyword_gaps: string[];
   market_insights: string;
   next_steps: string[];
+  expression_tips?: ExpressionTip[];
+  improvement_suggestions?: ImprovementSuggestion[];
   _raw?: boolean;
+}
+
+export interface ExpressionTip {
+  weak: string;
+  strong: string;
+  reason: string;
+}
+
+export interface ImprovementSuggestion {
+  category: "已有能力" | "建议改造" | "可写入简历";
+  content: string;
+  priority: "high" | "medium" | "low";
 }
 
 export interface OptimizedSection {

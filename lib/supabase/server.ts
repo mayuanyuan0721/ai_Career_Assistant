@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-// 创建 Supabase 客户端工厂，带超时和重试配置
+// 创建 Supabase 客户端工厂
+// 注意：不在这里设置全局 fetch 超时，由各调用方按需设置 AbortController
 export async function createClient() {
     const cookieStore = await cookies();
 
@@ -25,26 +26,11 @@ export async function createClient() {
                             }
                         );
                     } catch (error) {
-                        // ⚠️ 静默失败，避免阻塞请求
+                        // 静默失败，避免阻塞请求
                         // 这个错误通常发生在 Server Components 中，可以忽略
-                        // console.warn("[Supabase] Failed to set cookies:", 
-                        //     error instanceof Error ? error.message : String(error));
                     }
                 },
             },
-            // ⚡ 添加全局 fetch 配置
-            global: {
-                fetch: (input, init) => {
-                    // 设置超时为 5 秒
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 5000);
-                    
-                    return fetch(input, {
-                        ...init,
-                        signal: controller.signal,
-                    }).finally(() => clearTimeout(timeoutId));
-                }
-            }
         }
     );
 }

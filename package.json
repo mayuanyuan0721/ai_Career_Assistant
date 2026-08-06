@@ -7,14 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "crawl:jobs": "ts-node lib/crawlers/index.ts --task jobs",
-    "crawl:skills": "ts-node lib/crawlers/index.ts --task skills",
-    "crawl:interview": "ts-node lib/crawlers/index.ts --task interview",
-    "crawl:projects": "ts-node lib/crawlers/index.ts --task projects",
-    "crawl:articles": "ts-node lib/crawlers/index.ts --task articles",
-    "crawl:resume": "ts-node lib/crawlers/index.ts --task resume",
-    "crawl:all": "ts-node lib/crawlers/index.ts --task all",
-    "schedule": "ts-node lib/crawlers/scheduler.ts"
+    "login": "tsx lib/crawlers/login-helper.ts",
+    "login:boss": "tsx lib/crawlers/login-helper.ts boss",
+    "login:lagou": "tsx lib/crawlers/login-helper.ts lagou",
+    "login:liepin": "tsx lib/crawlers/login-helper.ts liepin",
+    "crawl:jobs": "tsx lib/crawlers/index.ts",
+    "crawl:skills": "tsx lib/crawlers/skills.ts",
+    "crawl:interview": "tsx lib/crawlers/interview.ts",
+    "crawl:projects": "tsx lib/crawlers/projects.ts",
+    "crawl:articles": "tsx lib/crawlers/articles.ts",
+    "crawl:resume": "tsx lib/crawlers/resume_examples.ts",
+    "crawl:all": "tsx lib/crawlers/index.ts",
+    "schedule": "tsx lib/crawlers/scheduler.ts"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^3.0.7",
@@ -41,6 +45,7 @@
     "node-cron": "^3.0.3",
     "openai": "^6.45.0",
     "pdf-parse": "^1.1.1",
+    "playwright": "^1.62.1",
     "puppeteer": "^24.0.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -64,6 +69,7 @@
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
+    "tsx": "^4.23.9",
     "typescript": "^5"
   }
 }

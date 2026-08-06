@@ -13,6 +13,7 @@ import ResumeAnalysis from "@/components/Resume/ResumeAnalysis"
 import { Mode, ConversationType } from "@/types/chat"
 import { ResumeReport } from "@/types/resume"
 import AuthModal from "@/components/auth/auth-modal"
+import { useAppStore } from "@/lib/store"
 
 interface UIMessagePart {
     type: string
@@ -36,6 +37,7 @@ interface Props {
     setMode: (mode: Mode) => void
     resume: any
     report: ResumeReport | null
+    onApplySectionOptimization?: (key: string, content: string) => void  // 新增回调
 }
 
 export default function ChatPanel({
@@ -43,13 +45,17 @@ export default function ChatPanel({
     conversationType = 'chat',
     initialMessages,
     onLogout,
-    user,
+    user: userProp,
     mode,
     setMode,
     resume,
     report,
+    onApplySectionOptimization,  // 新增 prop
 }: Props) {
     const [showAuth, setShowAuth] = useState(false)
+    // 使用 store 中的 user（客户端 checkAuth 后更新），而非仅依赖 SSR prop
+    const storeUser = useAppStore((s) => s.user)
+    const user = storeUser || userProp
 
     const transport = useMemo(() => {
         return new DefaultChatTransport({
@@ -85,23 +91,65 @@ export default function ChatPanel({
         transport,
     })
 
-    const initializedRef = useRef(false)
+    const prevConversationIdRef = useRef(conversationId)
+    const prevInitialMessagesRef = useRef(initialMessages)
+    
     useEffect(() => {
-        if (initializedRef.current || initialMessages.length === 0) return
-        initializedRef.current = true
-        console.log('[ChatPanel] Setting initial messages:', initialMessages.length)
-        setMessages(initialMessages as any)
-    }, [initialMessages, setMessages])
+        // 当 conversationId 变化或 initialMessages 引用变化时，重新设置消息
+        const idChanged = prevConversationIdRef.current !== conversationId
+        const messagesChanged = prevInitialMessagesRef.current !== initialMessages
+        // 关键：检查 useChat 内部的消息数量是否与 initialMessages 一致
+        const lengthMismatch = messages.length !== initialMessages.length
+        
+        console.log('[ChatPanel] Effect triggered:', { 
+            idChanged, 
+            messagesChanged,
+            lengthMismatch,
+            currentConvId: conversationId,
+            prevConvId: prevConversationIdRef.current,
+            initialMsgsLen: initialMessages.length,
+            currentMsgsLen: messages.length,
+            initialMsgs: initialMessages.slice(0, 3).map(m => ({ id: m.id, role: m.role }))
+        })
+        
+        // 强制同步：如果有初始消息且 useChat 内部数量不一致，必须设置
+        const shouldUpdate = initialMessages.length > 0 && (idChanged || messagesChanged || lengthMismatch)
+        
+        console.log('[ChatPanel] Should update?', { 
+            shouldUpdate,
+            initialMsgsLen: initialMessages.length,
+            currentMsgsLen: messages.length
+        })
+        
+        if (shouldUpdate) {
+            prevConversationIdRef.current = conversationId
+            prevInitialMessagesRef.current = initialMessages
+            console.log('[ChatPanel] Updating messages:', { count: initialMessages.length })
+            setMessages(initialMessages as any)
+            console.log('[ChatPanel] Messages updated in useChat')
+        }
+    }, [initialMessages, setMessages, conversationId, messages.length])
 
     const reportAdded = useRef(false)
     useEffect(() => { reportAdded.current = false }, [conversationId])
     useEffect(() => {
-        if (!report || reportAdded.current) return
+        if (!report || reportAdded.current) {
+            return
+        }
         reportAdded.current = true
-        setMessages((prev) => [
-            ...prev,
-            { id: "report-" + Date.now(), role: "assistant", parts: [{ type: "text", text: "__REPORT__" }] },
-        ])
+        setMessages((prev) => {
+            // 防止重复插入：检查是否已存在 report 标记消息
+            const hasReportMessage = prev.some(m => m.id === "report-report-message")
+            if (hasReportMessage) {
+                return prev
+            }
+            const newMessage = {
+                id: "report-report-message",
+                role: "assistant", 
+                parts: [{ type: "text", text: "__REPORT__" }]
+            }
+            return [...prev, newMessage]
+        })
     }, [report, setMessages])
 
     const handleSend = (text: string) => {
@@ -230,6 +278,7 @@ export default function ChatPanel({
                     messages={adaptedMessages}
                     isLoading={isLoading}
                     reportComponent={report ? <ResumeAnalysis report={report} /> : undefined}
+                    onApplySectionOptimization={onApplySectionOptimization}  // 新增
                 />
             </div>
 

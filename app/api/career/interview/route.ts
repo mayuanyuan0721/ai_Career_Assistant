@@ -3,6 +3,7 @@ import { buildInterviewPrompt, formatInterviewForPrompt } from "@/lib/prompts/re
 import { deepseek } from "@/lib/deepseek/ai";
 import { generateText } from "ai";
 import { getInterviewQuestions } from "@/lib/career-data/loader";
+import { getJobTitle, getInterviewCategory, SKILL_INTERVIEW_CATEGORY } from "@/lib/career-config";
 
 // GET - 获取面试问题列表（按技能筛选）
 export async function GET(req: Request) {
@@ -20,12 +21,8 @@ export async function GET(req: Request) {
     // 根据用户技能选择最相关的分类
     let category = "react"; // default
     if (skills && skills.length > 0) {
-        const skillMap: Record<string, string> = {
-            react: "react", vue: "vue", angular: "angular",
-            javascript: "javascript", css: "css", node: "engineering"
-        };
         for (const s of skills) {
-            const cat = skillMap[s.toLowerCase()];
+            const cat = SKILL_INTERVIEW_CATEGORY[s.toLowerCase()];
             if (cat) { category = cat; break; }
         }
     }
@@ -71,7 +68,14 @@ export async function POST(req: Request) {
     }
 
     try {
-        // 先检查当前会话是否有面试记录，没有则生成第一题
+        // 先保存用户消息到数据库
+        await supabase.from("messages").insert({
+            conversation_id: conversationId,
+            role: "user",
+            content: message
+        });
+
+        // 检查当前会话是否有面试记录，没有则生成第一题
         const { data: existingMessages } = await supabase
             .from("messages")
             .select("content")
@@ -81,36 +85,12 @@ export async function POST(req: Request) {
 
         let systemPrompt = "";
         
-        // 根据行业设置岗位名称
-        const industryJobTitle: Record<string, string> = {
-            frontend: "前端开发工程师",
-            backend: "后端开发工程师",
-            design: "UI/UX设计师",
-            product: "产品经理",
-            data: "数据分析师",
-            mobile: "移动开发工程师",
-            testing: "测试工程师",
-            devops: "运维工程师",
-        };
-        
-        const jobTitle = industryJobTitle[industry] || "前端开发工程师";
+        const jobTitle = getJobTitle(industry);
+        const category = getInterviewCategory(industry);
         
         if (!existingMessages || existingMessages.length === 0) {
             // 第一题：根据简历和行业生成问题
             const skills: string[] = resume?.skills || [];
-            
-            // 根据行业选择不同的问题分类
-            const categoryMap: Record<string, string> = {
-                frontend: "react",
-                backend: "java",
-                design: "design",
-                product: "product",
-                data: "data",
-                mobile: "mobile",
-                testing: "testing",
-                devops: "devops",
-            };
-            const category = categoryMap[industry] || "react";
             
             const questions = getInterviewQuestions({ category, limit: 3 });
             const firstQn = questions[0]?.question || "请介绍一下你最近做的项目？";
@@ -146,17 +126,6 @@ ${formatInterviewForPrompt([
             if (introErr && introErr.code !== "23505") throw introErr;
         } else {
             // 后续问题
-            const categoryMap: Record<string, string> = {
-                frontend: "react",
-                backend: "java",
-                design: "design",
-                product: "product",
-                data: "data",
-                mobile: "mobile",
-                testing: "testing",
-                devops: "devops",
-            };
-            const category = categoryMap[industry] || "react";
             const relevantQuestions = getInterviewQuestions({ category, limit: 10 });
             systemPrompt = `你是一名资深技术面试官，正在进行一对一的模拟面试。\n\n# 面试流程\n1. 对用户的回答进行评分（1-10 分）\n2. 给出具体的改进建议，指出优点和不足\n3. 提出下一个相关问题\n4. 保持专业友好的态度\n\n# 当前用户状态\n- 技能：${resume?.skills?.join(", ") || "未知"}\n- 目标岗位：${jobTitle}\n\n# 之前的面试对话（仅用于上下文，不要重复问题）\n请将以下视为历史记录，但只基于最后一轮回复：
 ${existingMessages.map(m => m.content).join("\n\n")}\n\n# 题库参考（可选用）

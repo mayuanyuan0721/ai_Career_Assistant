@@ -73,9 +73,7 @@ export async function POST(req: Request) {
         .single();
 
     if (!conversation) {
-        // 如果对话不存在，可能是 RLS 阻止了查询，或者对话确实不存在
-        // 尝试直接插入消息（如果对话是临时的）
-        console.warn("[MESSAGES POST] Conversation not found, but trying to insert message anyway");
+        return Response.json({ error: "Conversation not found" }, { status: 404 });
     }
 
     const { data, error } = await supabase

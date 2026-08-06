@@ -1,14 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-
-// Timeout helper
-async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, fallback: T): Promise<T> {
-    return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => 
-            setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
-        )
-    ]).catch(() => fallback)
-}
+import withTimeout from "@/lib/timeout"
 
 export async function GET() {
     const supabase = await createClient()

@@ -8,6 +8,7 @@ import ChatPanel from "@/components/chat/chat-panel"
 import RightPanel from "@/components/RightPanel"
 import AuthModal from "@/components/auth/auth-modal"
 import ResumePreview from "@/components/Resume/ResumePreview"
+import OptimizationReviewModal from "@/components/Resume/OptimizationReviewModal"
 import { Mode, ConversationType } from "@/types/chat"
 import { ResumeReport, OptimizedSection } from "@/types/resume"
 import { InterviewData } from "@/types/chat"
@@ -39,6 +40,8 @@ export default function ClientChatShell({
         fetchConversations,
         getMessages,
         getConversationById,
+        hasMessages,
+        loadMessages,
     } = useAppStore()
     
     const [mode, setMode] = useState<Mode>("resume_optimize")
@@ -49,7 +52,19 @@ export default function ClientChatShell({
     const [analyzing, setAnalyzing] = useState(false)
     const [showAuth, setShowAuth] = useState(false)
     const [interviewData, setInterviewData] = useState<InterviewData | undefined>(undefined)
-    const localUser = user
+    
+    // 优化审核对话框状态
+    const [showReviewModal, setShowReviewModal] = useState(false)
+    const [pendingOptimization, setPendingOptimization] = useState<{
+        key: string
+        originalContent: string
+        optimizedContent: string
+        extractedDescription: string
+        targetProjectIndex?: number
+    } | null>(null)
+    // 使用 store 中的 user（客户端 checkAuth 后更新），而非仅依赖 SSR prop
+    const storeUser = useAppStore((s) => s.user)
+    const localUser = storeUser || user
     
     console.log('[ClientChatShell] Render - conversationId:', conversationId, 'resume:', !!resume)
     
@@ -83,7 +98,10 @@ export default function ClientChatShell({
     }, [resume, report, optimizedSections])
     
     useEffect(() => {
+        console.log('[ClientChatShell] useEffect triggered, initializedRef:', initializedRef.current)
+        
         if (initializedRef.current) {
+            console.log('[ClientChatShell] Already initialized, skipping')
             return
         }
         
@@ -91,6 +109,7 @@ export default function ClientChatShell({
         
         console.log('[ClientChatShell] Initializing with conversationId:', initialConversationId)
         console.log('[ClientChatShell] Initial messages count:', initialMessages.length)
+        console.log('[ClientChatShell] Local user:', localUser?.email || 'null')
         
         init({
             initialConversationId,
@@ -98,13 +117,32 @@ export default function ClientChatShell({
             user: localUser
         })
         
+        console.log('[ClientChatShell] Init completed, store conversationId should be:', initialConversationId)
+        
         checkAuth().catch(() => {
             // 静默处理，未登录时不打印错误
         })
         fetchConversations().catch(() => {
             // 静默处理，未登录时不打印错误
         })
-    }, [initialConversationId, initialMessages, localUser])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+    
+    // 确保当 conversationId 变化时，消息已加载到 store
+    useEffect(() => {
+        if (!conversationId) return
+        
+        const hasMsgs = hasMessages(conversationId)
+        console.log('[ClientChatShell] Checking messages:', { conversationId, hasMsgs })
+        
+        // 如果 store 中没有该对话的消息，从数据库加载
+        if (!hasMsgs) {
+            console.log('[ClientChatShell] Loading messages from DB for:', conversationId)
+            loadMessages(conversationId).then(msgs => {
+                console.log('[ClientChatShell] Loaded messages from DB:', msgs.length)
+            }).catch(console.error)
+        }
+    }, [conversationId, hasMessages, loadMessages])
     
     const currentConversation = getConversationById(conversationId)
     const conversationType = currentConversation?.type || initialConversationType
@@ -152,6 +190,55 @@ export default function ClientChatShell({
     const handleSectionOptimized = useCallback((key: string, optimized: string) => {
         setOptimizedSections(prev => ({ ...prev, [key]: { optimized, accepted: true } }))
     }, [])
+
+    // Callback to bridge Message -> RightPanel
+    const handleApplyOptimization = useCallback((key: string, content: string) => {
+        console.log('[ClientChatShell] Applying optimization:', key)
+        console.log('[ClientChatShell] Content preview:', content.substring(0, 100))
+        
+        // 提取 AI 回复中"## 项目描述"部分的内容
+        let extractedDescription = content
+        const descriptionMatch = content.match(/## 项目描述\s*\n([\s\S]*?)(?=\n## |\n### |$)/)
+        if (descriptionMatch) {
+            extractedDescription = descriptionMatch[1].trim()
+        }
+        
+        // 尝试找到要替换的目标项目
+        let targetProjectIndex: number | undefined = undefined
+        
+        // 尝试从 content 中提取项目名称
+        const projectNameMatch = content.match(/## 项目名称\s*\n\s*(.*)/)
+        if (projectNameMatch && resume?.projects) {
+            const mentionedProjectName = projectNameMatch[1].trim()
+            
+            // 查找最相似的项目
+            for (let i = 0; i < resume.projects.length; i++) {
+                const project = resume.projects[i]
+                if (project.name && (
+                    project.name.includes(mentionedProjectName) ||
+                    mentionedProjectName.includes(project.name)
+                )) {
+                    targetProjectIndex = i
+                    break
+                }
+            }
+        }
+        
+        // 如果没有找到匹配的项目，默认第一个项目
+        if (targetProjectIndex === undefined && resume?.projects && resume.projects.length > 0) {
+            targetProjectIndex = 0
+        }
+        
+        // 设置待审核的优化内容并打开对话框
+        setPendingOptimization({
+            key,
+            originalContent: '',  // 不再需要，直接从 resume 读取
+            optimizedContent: content,
+            extractedDescription,
+            targetProjectIndex
+        })
+        setShowReviewModal(true)
+    }, [resume])
     
     const handleShowPreview = useCallback(() => {
         setShowPreview(v => !v)
@@ -224,6 +311,7 @@ export default function ClientChatShell({
                     setMode={setMode}
                     resume={resume}
                     report={report}
+                    onApplySectionOptimization={handleApplyOptimization}  // 新增
                 />
             </div>
             
@@ -252,6 +340,35 @@ export default function ClientChatShell({
                     resume={resume}
                     optimizedSections={optimizedSections}
                     onClose={() => setShowPreview(false)}
+                />
+            )}
+            
+            {/* Optimization Review Modal */}
+            {showReviewModal && pendingOptimization && (
+                <OptimizationReviewModal
+                    resume={resume}
+                    optimizedContent={pendingOptimization.optimizedContent}
+                    extractedDescription={pendingOptimization.extractedDescription}
+                    targetProjectIndex={pendingOptimization.targetProjectIndex}
+                    onAccept={(content) => {
+                        console.log('[ClientChatShell] User accepted optimization')
+                        console.log('[ClientChatShell] Content to save:', content.substring(0, 100))
+                        setOptimizedSections(prev => {
+                            const newState = { ...prev, [pendingOptimization.key]: { optimized: content, accepted: true } }
+                            console.log('[ClientChatShell] Updated optimizedSections:', Object.keys(newState).length, 'sections')
+                            return newState
+                        })
+                        setShowReviewModal(false)
+                        setPendingOptimization(null)
+                    }}
+                    onReject={() => {
+                        console.log('[ClientChatShell] User rejected optimization')
+                    }}
+                    onClose={() => {
+                        console.log('[ClientChatShell] Closing optimization review modal')
+                        setShowReviewModal(false)
+                        setPendingOptimization(null)
+                    }}
                 />
             )}
         </div>

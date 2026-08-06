@@ -10,7 +10,7 @@ export default async function ChatPage() {
     // Generate a new conversation ID
     const newId = crypto.randomUUID()
 
-    // If user is logged in, pre-create the conversation in DB
+    // 已登录用户预创建会话，未登录用户仅生成临时 ID（客户端会弹出登录弹窗）
     if (user) {
         await supabase.from("conversations").insert({
             id: newId,

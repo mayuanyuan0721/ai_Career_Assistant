@@ -19,38 +19,6 @@ export function estimateMessagesTokens(messages: { role: string; content: string
 }
 
 /**
- * Truncate messages to fit within the token limit.
- * Strategy: keep the most recent messages, discard the oldest.
- * Always keeps at least the last 2 messages (1 user + 1 assistant) to maintain coherence.
- */
-export function truncateMessages(
-    messages: { role: string; content: string }[],
-    maxTokens: number = MAX_CONTEXT_TOKENS
-): { role: string; content: string }[] {
-    const totalTokens = estimateMessagesTokens(messages);
-
-    // If already within limit, return as-is
-    if (totalTokens <= maxTokens) {
-        return messages;
-    }
-
-    // Work backwards, keeping the most recent messages
-    const kept: { role: string; content: string }[] = [];
-    let tokensUsed = 0;
-
-    for (let i = messages.length - 1; i >= 0; i--) {
-        const msgTokens = estimateTokens(messages[i].content) + 4;
-        if (tokensUsed + msgTokens > maxTokens && kept.length >= 2) {
-            break;
-        }
-        kept.unshift(messages[i]);
-        tokensUsed += msgTokens;
-    }
-
-    return kept;
-}
-
-/**
  * Summarize older messages using AI to preserve context without using too many tokens.
  * Returns a summary string that can be prepended to the context.
  */

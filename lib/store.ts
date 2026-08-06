@@ -61,7 +61,9 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
             conversations,
             messagesMap,
             user,
-            isAuthChecked: !!user
+            // 始终标记为已检查，避免 SSR user 为 null 时阻塞 UI
+            // 客户端 checkAuth 会在后台异步确认登录状态
+            isAuthChecked: true
         })
     },
     

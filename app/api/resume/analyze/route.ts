@@ -4,6 +4,7 @@ import { generateText } from "ai";
 import { buildAnalyzePrompt } from "@/lib/prompts/resume";
 import { getJobs, getResumeExamples, formatJobsForPrompt, formatExamplesForPrompt } from "@/lib/career-data/loader";
 import { createClient } from "@/lib/supabase/server";
+import { getJobTitle } from "@/lib/career-config";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -19,18 +20,7 @@ export async function POST(req: NextRequest) {
     const userSkills: string[] = body.skills || resume?.skills || [];
 
     // 根据行业设置岗位名称
-    const industryJobTitle: Record<string, string> = {
-      frontend: "前端开发工程师",
-      backend: "后端开发工程师",
-      design: "UI/UX设计师",
-      product: "产品经理",
-      data: "数据分析师",
-      mobile: "移动开发工程师",
-      testing: "测试工程师",
-      devops: "运维工程师",
-    };
-    
-    const jobTitle = industryJobTitle[industry] || "前端开发工程师";
+    const jobTitle = getJobTitle(industry);
 
     // Inject market data
     let jobsStr: string | undefined;

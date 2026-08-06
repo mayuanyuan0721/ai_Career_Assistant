@@ -1,5 +1,5 @@
 "use client"
-import { ResumeReport } from "@/types/resume"
+import { ResumeReport, ExpressionTip, ImprovementSuggestion } from "@/types/resume"
 import styles from "@/css/resumeAnalysis.module.css"
 
 interface Props {
@@ -26,6 +26,63 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
         <div className={styles.barFill} style={{ width: value + "%", background: color }} />
       </div>
       <span className={styles.barValue}>{value}</span>
+    </div>
+  );
+}
+
+function ExpressionBadge({ level }: { level?: "weak" | "strong" | "mixed" }) {
+  if (!level) return null;
+  const map = {
+    weak: { label: "弱表达", cls: styles.exprWeak },
+    strong: { label: "强表达", cls: styles.exprStrong },
+    mixed: { label: "混合", cls: styles.exprMixed },
+  };
+  const { label, cls } = map[level];
+  return <span className={`${styles.exprBadge} ${cls}`}>{label}</span>;
+}
+
+function ExpressionTips({ tips }: { tips: ExpressionTip[] }) {
+  if (!tips.length) return null;
+  return (
+    <div className={styles.exprTips}>
+      <h4>💡 强弱表达对比</h4>
+      {tips.map((tip, i) => (
+        <div key={i} className={styles.tipCard}>
+          <div className={styles.tipWeak}>❌ {tip.weak}</div>
+          <div className={styles.tipStrong}>✅ {tip.strong}</div>
+          <div className={styles.tipReason}>💬 {tip.reason}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ImprovementList({ suggestions }: { suggestions: ImprovementSuggestion[] }) {
+  if (!suggestions.length) return null;
+  const catMap = {
+    "已有能力": styles.catExisting,
+    "建议改造": styles.catSuggest,
+    "可写入简历": styles.catWritable,
+  };
+  const prioMap = {
+    high: { label: "高", cls: styles.priorityHigh },
+    medium: { label: "中", cls: styles.priorityMedium },
+    low: { label: "低", cls: styles.priorityLow },
+  };
+  return (
+    <div className={styles.improvements}>
+      <h4>🎯 改进建议（三层区分）</h4>
+      {suggestions.map((s, i) => (
+        <div key={i} className={styles.improveCard}>
+          <span className={`${styles.improveCategory} ${catMap[s.category] || styles.catSuggest}`}>
+            {s.category}
+          </span>
+          <span className={styles.improveContent}>{s.content}</span>
+          <span className={`${styles.improvePriority} ${(prioMap as any)[s.priority]?.cls || styles.priorityMedium}`}>
+            {(prioMap as any)[s.priority]?.label || "中"}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -63,7 +120,10 @@ export default function ResumeAnalysis({ report }: Props) {
                 <span className={styles.sectionType}>
                   {sec.type === "project" ? "📁" : sec.type === "skills" ? "🛠" : "💼"}
                 </span>
-                <span className={styles.sectionName}>{sec.name || sec.type}</span>
+                <span className={styles.sectionName}>
+                  {sec.name || sec.type}
+                  <ExpressionBadge level={sec.expression_level} />
+                </span>
                 <span className={styles.sectionScore} style={{
                   color: sec.score >= 70 ? "#22c55e" : "#f59e0b"
                 }}>{sec.score}分</span>
@@ -79,6 +139,14 @@ export default function ResumeAnalysis({ report }: Props) {
                     <p>{sec.optimized}</p>
                   </div>
                 </div>
+                {sec.expression_issues && sec.expression_issues.length > 0 && (
+                  <div className={styles.exprIssues}>
+                    <span>表达问题：</span>
+                    <ul>
+                      {sec.expression_issues.map((issue, j) => <li key={j}>{issue}</li>)}
+                    </ul>
+                  </div>
+                )}
                 {sec.changes.length > 0 && (
                   <ul className={styles.changes}>
                     {sec.changes.map((c, j) => <li key={j}>{c}</li>)}
@@ -94,6 +162,16 @@ export default function ResumeAnalysis({ report }: Props) {
             </details>
           ))}
         </div>
+      )}
+
+      {/* Expression tips */}
+      {report.expression_tips && report.expression_tips.length > 0 && (
+        <ExpressionTips tips={report.expression_tips} />
+      )}
+
+      {/* Improvement suggestions */}
+      {report.improvement_suggestions && report.improvement_suggestions.length > 0 && (
+        <ImprovementList suggestions={report.improvement_suggestions} />
       )}
 
       {/* Keyword gaps */}

@@ -63,7 +63,7 @@ function inferStack(repo: GitHubRepo, category: ProjectCategory): string[] {
   return stack.length ? stack : ["JavaScript"];
 }
 
-/** 规范化项目数�?*/
+/** 规范化项目数�?*/
 function normalizeProject(repo: GitHubRepo, category: ProjectCategory): Project | null {
   if (!repo.description || repo.description.length < 10) {
     logger.warn(`跳过项目 ${repo.name}: README为空`);
@@ -123,7 +123,7 @@ export async function crawlProjects(): Promise<CrawlStats> {
         }
       } catch (err) {
         stats.errors++;
-        logger.error(`采集分类 ${category} 关键�?"${keyword}" 失败`);
+        logger.error(`采集分类 ${category} 关键�?"${keyword}" 失败`);
       }
     }
   }

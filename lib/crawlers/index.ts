@@ -1,64 +1,83 @@
 /**
- * CLI entry point
- * Usage: ts-node src/index.ts --task [jobs|skills|skills-model|interview|projects|articles|resume|all]
+ * 真实岗位数据爬虫入口
+ * 使用 Puppeteer 爬取真实招聘网站的岗位数据
  */
-import { crawlJobs } from "./crawlers/jobs";
-import { crawlSkills } from "./crawlers/skills";
-import { crawlSkillsModel } from "./crawlers/skills_model";
-import { crawlInterview } from "./crawlers/interview";
-import { crawlProjects } from "./crawlers/projects";
-import { crawlArticles } from "./crawlers/articles";
-import { crawlResumeExamples } from "./crawlers/resume_examples";
-import { CrawlStats } from "./types";
+import { CrawlerManager } from "./crawlers/real-job-crawler";
 import { logger } from "./utils/logger";
 
-const args = process.argv.slice(2);
-const taskIndex = args.indexOf("--task");
-const task = taskIndex !== -1 ? args[taskIndex + 1] : "all";
-
-const taskMap: Record<string, () => Promise<CrawlStats>> = {
-  jobs: crawlJobs,
-  skills: crawlSkills,
-  "skills-model": crawlSkillsModel,
-  interview: crawlInterview,
-  projects: crawlProjects,
-  articles: crawlArticles,
-  resume: crawlResumeExamples,
+// 爬取配置
+const CRAWL_CONFIG = {
+  // 招聘平台
+  platform: "lagou" as "boss" | "lagou" | "liepin",
+  
+  // 搜索关键词
+  keywords: ["前端开发工程师", "React开发工程师", "Vue开发工程师"],
+  
+  // 目标城市
+  cities: ["北京", "上海", "深圳", "杭州"],
+  
+  // 行业
+  industrySlug: "frontend",
+  
+  // 是否无头模式（不显示浏览器窗口）
+  // 注意：如果需要手动完成验证码，需要设置为 false
+  headless: false,
 };
 
+/**
+ * 主函数
+ */
 async function main() {
-  logger.info(`Task: ${task}`);
+  logger.info("===== Start crawling real jobs =====");
+  logger.info(`Platform: ${CRAWL_CONFIG.platform}`);
+  logger.info(`Keywords: ${CRAWL_CONFIG.keywords.join(", ")}`);
+  logger.info(`Cities: ${CRAWL_CONFIG.cities.join(", ")}`);
+  logger.info(`Industry: ${CRAWL_CONFIG.industrySlug}`);
 
-  if (task === "all") {
-    const results: Record<string, CrawlStats> = {};
-    for (const [name, fn] of Object.entries(taskMap)) {
+  let totalJobs = 0;
+  let successCount = 0;
+  let failCount = 0;
+
+  // 遍历关键词和城市
+  for (const keyword of CRAWL_CONFIG.keywords) {
+    for (const city of CRAWL_CONFIG.cities) {
+      logger.info(`\nCrawling: ${keyword} in ${city}`);
+
       try {
-        results[name] = await fn();
-      } catch (err) {
-        logger.error(`Task ${name} failed: ${err instanceof Error ? err.message : String(err)}`);
-        results[name] = { added: 0, skipped: 0, errors: 1 };
+        const result = await CrawlerManager.crawlAndImport(
+          CRAWL_CONFIG.platform,
+          keyword,
+          city,
+          CRAWL_CONFIG.industrySlug
+        );
+
+        if (result.success) {
+          logger.info(`✅ Success: ${result.jobsCount} jobs imported`);
+          totalJobs += result.jobsCount;
+          successCount++;
+        } else {
+          logger.error(`❌ Failed: ${result.error}`);
+          failCount++;
+        }
+
+        // 延迟，避免请求过快
+        logger.info("Waiting 3 seconds before next crawl...");
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      } catch (error) {
+        logger.error(`Error crawling ${keyword} in ${city}:`, error);
+        failCount++;
       }
     }
-    logger.info("===== All tasks done =====");
-    for (const [name, stats] of Object.entries(results)) {
-      logger.info(`  ${name}: added=${stats.added} skipped=${stats.skipped} errors=${stats.errors}`);
-    }
-  } else if (task in taskMap) {
-    try {
-      const stats = await taskMap[task]();
-      logger.info(`Done: added=${stats.added} skipped=${stats.skipped} errors=${stats.errors}`);
-    } catch (err) {
-      logger.error(`Task ${task} failed: ${err instanceof Error ? err.message : String(err)}`);
-      process.exit(1);
-    }
-  } else {
-    console.error(`Unknown task: ${task}`);
-    console.error(`Available: ${Object.keys(taskMap).join(", ")}, all`);
-    process.exit(1);
   }
+
+  logger.info("\n===== Crawling completed =====");
+  logger.info(`Total jobs: ${totalJobs}`);
+  logger.info(`Success: ${successCount}`);
+  logger.info(`Failed: ${failCount}`);
 }
 
-main().catch((err) => {
-  logger.error(`Unhandled error: ${err instanceof Error ? err.message : String(err)}`);
+// 运行爬虫
+main().catch((error) => {
+  logger.error("Unhandled error:", error);
   process.exit(1);
 });

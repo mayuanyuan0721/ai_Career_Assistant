@@ -4,15 +4,23 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
+import { useState } from "react"
 
 interface MessageProps {
     role: "user" | "assistant"
     content: string
     isStreaming?: boolean
+    onApplySectionOptimization?: (key: string, content: string) => void  // 新增回调
 }
 
-export default function Message({ role, content, isStreaming }: MessageProps) {
+export default function Message({ 
+    role, 
+    content, 
+    isStreaming,
+    onApplySectionOptimization
+}: MessageProps) {
     const isUser = role === "user"
+    const isAssistant = !isUser
 
     return (
         <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
@@ -76,7 +84,33 @@ export default function Message({ role, content, isStreaming }: MessageProps) {
                         >
                             {content}
                         </ReactMarkdown>
-                        {isStreaming && <span className="streaming-cursor">{"\u258e"}</span>}
+                        <div className="flex gap-2 mt-2">
+                            {!isUser && (
+                                <button
+                                    onClick={() => {
+                                        console.log('[Message] Button clicked!')
+                                        const key = `assistant_${Date.now()}`
+                                        const optimized = content.replace(/\s*$/, '')
+                                        console.log('[Message] Calling callback:', { key, optimized: optimized.substring(0, 50) })
+                                        onApplySectionOptimization?.(key, optimized)
+                                        console.log('[Message] Callback called successfully')
+                                    }}
+                                    style={{
+                                        background: '#f0fdf4',
+                                        border: '1px solid #bbf7d0',
+                                        color: '#166534',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ✨ 应用此建议到简历
+                                </button>
+                            )}
+                            {onApplySectionOptimization && !isUser && <span>[✅ Callback exists]</span>}
+                            {isStreaming && <span className="streaming-cursor">▎</span>}
+                        </div>
                     </div>
                 )}
             </div>

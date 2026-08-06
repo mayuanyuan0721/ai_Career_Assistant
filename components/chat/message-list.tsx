@@ -16,9 +16,17 @@ interface Props {
     isThinking?: boolean
     isStreaming?: boolean
     reportComponent?: React.ReactNode
+    onApplySectionOptimization?: (key: string, content: string) => void  // 新增回调
 }
 
-export default function MessageList({ messages, isLoading, isThinking, isStreaming, reportComponent }: Props) {
+export default function MessageList({ 
+    messages, 
+    isLoading, 
+    isThinking, 
+    isStreaming, 
+    reportComponent,
+    onApplySectionOptimization  // 新增 prop
+}: Props) {
     // Support both isLoading shorthand and separate isThinking/isStreaming flags
     const showThinking = isThinking ?? isLoading ?? false
     const activeStreaming = isStreaming ?? false
@@ -49,6 +57,7 @@ export default function MessageList({ messages, isLoading, isThinking, isStreami
                             role={msg.role as "user" | "assistant"}
                             content={msg.content}
                             isStreaming={activeStreaming && idx === lastAssistantIdx}
+                            onApplySectionOptimization={onApplySectionOptimization}  // 传递回调给 Message
                         />
                     )
                 ))}

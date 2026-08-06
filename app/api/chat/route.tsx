@@ -14,6 +14,7 @@ import { apiError } from "@/lib/api/http"
 import { prepareContext, estimateMessagesTokens } from "@/lib/context-manager"
 import { getUserMemories, extractAndSaveMemories } from "@/lib/memory-manager"
 import { withRetry } from "@/lib/supabase/retry"
+import { SKILL_INTERVIEW_CATEGORY } from "@/lib/career-config"
 
 // Simple per-user rate limit: max messages within a rolling 24h window.
 // Backed by the messages table, so it survives restarts with no extra infra.
@@ -94,12 +95,8 @@ export async function POST(request: NextRequest) {
                 }
                 case "interview": {
                     // Determine category from user skills
-                    const categoryMap: Record<string, string> = {
-                        react: "react", vue: "vue", typescript: "typescript",
-                        javascript: "javascript", css: "css", node: "engineering"
-                    };
                     const category = userSkills
-                        .map((s: string) => categoryMap[s.toLowerCase()])
+                        .map((s: string) => SKILL_INTERVIEW_CATEGORY[s.toLowerCase()])
                         .filter(Boolean)[0] || "react";
                     const questions = getInterviewQuestions({ category, limit: 10 });
                     systemPrompt = buildInterviewPrompt(formatInterviewForPrompt(questions));

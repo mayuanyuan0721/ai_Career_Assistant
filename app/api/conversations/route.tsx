@@ -1,14 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-
-// Timeout helper
-async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, fallback: T): Promise<T> {
-    return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => 
-            setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
-        )
-    ]).catch(() => fallback)
-}
+import withTimeout from "@/lib/timeout"
 
 export async function DELETE(req: Request) {
     const supabase = await createClient()
@@ -44,10 +35,12 @@ export async function DELETE(req: Request) {
         return Response.json({ error: "No permission" }, { status: 403 })
     }
 
+    // 先删除消息，再删除会话；如果第二步失败，整个操作返回错误
+    // 注意：Supabase 不支持服务端事务，这里通过顺序执行 + 错误回滚提示来处理
     const { error: msgError } = await withTimeout(
         supabase.from("messages").delete().eq("conversation_id", id),
         5000,
-        { error: new Error('Delete timeout') } as any
+        { error: new Error('Delete messages timeout') } as any
     )
 
     if (msgError) {
@@ -57,7 +50,7 @@ export async function DELETE(req: Request) {
     const { data: deletedRows, error } = await withTimeout(
         supabase.from("conversations").delete().eq("id", id).select("id"),
         5000,
-        { data: null, error: new Error('Delete timeout') } as any
+        { data: null, error: new Error('Delete conversation timeout') } as any
     )
 
     if (error) {

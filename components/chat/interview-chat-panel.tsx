@@ -5,7 +5,6 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { LogOut, User, Mic, CheckCircle2 } from "lucide-react"
 import MessageList from "./message-list"
 import ChatInput from "./chat-input"
 import AuthModal from "@/components/auth/auth-modal"
@@ -112,23 +111,18 @@ export default function InterviewChatPanel({
         <div className="flex flex-col h-full">
             <div className="p-4 border-b">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Mic className="h-5 w-5 text-blue-500" />
-                        <h2 className="text-lg font-semibold">Interview</h2>
-                    </div>
+                    <h2 className="text-lg font-semibold">面试</h2>
                     <div className="flex items-center gap-2">
                         {user ? (
                             <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
                                 <span className="text-sm">{user.email}</span>
                                 <Button variant="ghost" size="sm" onClick={onLogout}>
-                                    <LogOut className="h-4 w-4 mr-1" />
-                                    Logout
+                                    退出
                                 </Button>
                             </div>
                         ) : (
                             <Button variant="ghost" size="sm" onClick={() => setShowAuth(true)}>
-                                Login
+                                登录
                             </Button>
                         )}
                     </div>
@@ -136,9 +130,9 @@ export default function InterviewChatPanel({
                 
                 {interviewData && (
                     <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Question {interviewData.currentPosition + 1} / {interviewData.questions.length}</span>
+                        <span>问题 {interviewData.currentPosition + 1} / {interviewData.questions.length}</span>
                         {interviewData.isCompleted && (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <span className="text-green-600 text-xs">已完成</span>
                         )}
                     </div>
                 )}

@@ -142,13 +142,18 @@ export async function POST(request: NextRequest) {
 
         if (!conversation) {
             console.log("[CHAT] Creating new conversation:", conversationId);
-            await supabase
+            const { error: insertError } = await supabase
                 .from("conversations")
                 .insert({
                     id: conversationId,
                     title: "New Chat",
                     user_id: user.id
                 });
+            
+            if (insertError) {
+                console.error("[CHAT] Failed to create conversation:", insertError);
+                return apiError("创建会话失败: " + insertError.message, 500);
+            }
         }
 
         // Rebuild context from DB (single source of truth), then append the new message

@@ -103,7 +103,7 @@ export default function Message({
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    ✨ 应用此建议到简历
+                                    应用此建议到简历
                                 </button>
                             )}
                             {isStreaming && <span className="streaming-cursor">▎</span>}

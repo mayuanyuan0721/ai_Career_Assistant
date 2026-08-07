@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Trash2, Plus, MessageSquare, Mic, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
 import { useAppStore } from "@/lib/store"
@@ -17,38 +16,42 @@ interface Props {
     conversations?: Conversation[]
     refreshKey?: number
     onLogout?: () => void
+    onShowAuth?: () => void  // 新增：显示登录/注册弹窗
 }
 
-export default function Sidebar({ conversations: propConversations, onSelectConversation, activeId, onDeleteConversation, isLogin = true }: Props) {
+export default function Sidebar({ conversations: propConversations, onSelectConversation, activeId, onDeleteConversation, isLogin = true, onShowAuth }: Props) {
     const router = useRouter()
     
     // Get conversations directly from Zustand store
     const { conversations: storeConversations } = useAppStore()
     const conversations = propConversations ?? storeConversations
     
-    const getIcon = (type: string) => {
-        switch (type) {
-            case 'interview':
-                return <Mic className="h-4 w-4 text-blue-500" />
-            default:
-                return <MessageSquare className="h-4 w-4 text-gray-500" />
+    const handleNewChat = () => {
+        if (!isLogin) {
+            // 未登录时，弹出登录弹窗而不是 alert
+            if (onShowAuth) {
+                onShowAuth()
+            } else {
+                alert("请先登录后再创建对话")
+            }
+            return
         }
+        router.push("/chat")
     }
     
     return (
         <div className="w-[260px] border-r flex flex-col h-full">
             <div className="p-4">
                 <h2 className="text-lg font-semibold mb-3">History</h2>
-                <Button onClick={() => { if (!isLogin) { alert("Please login first"); return; } router.push("/chat") }} className="w-full" size="sm">
-                    <Plus className="h-4 w-4 mr-1" />
-                    {"\u65b0\u5bf9\u8bdd"}
+                <Button onClick={handleNewChat} className="w-full" size="sm">
+                    新对话
                 </Button>
             </div>
             <Separator />
             <ScrollArea className="flex-1">
                 <div className="p-2 space-y-1">
                     {conversations.length === 0 && isLogin && (
-                        <div className="text-center text-sm text-muted-foreground py-4">{"\u6682\u65e0\u5bf9\u8bdd"}</div>
+                        <div className="text-center text-sm text-muted-foreground py-4">暂无对话</div>
                     )}
                     {conversations.map((item) => (
                         <div 
@@ -59,20 +62,19 @@ export default function Sidebar({ conversations: propConversations, onSelectConv
                             )} 
                             onClick={() => onSelectConversation(item.id)}
                         >
-                            {getIcon(item.type || 'chat')}
                             <span className="flex-1 truncate text-sm">{item.title}</span>
                             <Button 
                                 variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" 
+                                size="sm" 
+                                className="h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-xs" 
                                 onClick={(e) => { 
                                     e.stopPropagation()
-                                    if (confirm("\u4f60\u786e\u5b9a\u8981\u5220\u9664\u8fd9\u4e2a\u804a\u5929?")) {
+                                    if (confirm("确定要删除这个聊天?")) {
                                         onDeleteConversation(item.id)
                                     }
                                 }}
                             >
-                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                删除
                             </Button>
                         </div>
                     ))}
@@ -86,7 +88,6 @@ export default function Sidebar({ conversations: propConversations, onSelectConv
                     className="w-full justify-start" 
                     onClick={() => router.push("/settings")}
                 >
-                    <Settings className="h-4 w-4 mr-2" />
                     数据更新设置
                 </Button>
             </div>

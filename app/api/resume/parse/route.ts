@@ -3,10 +3,16 @@ import { generateText } from "ai"
 import { deepseek } from "@/lib/deepseek/ai"
 import { resumeParsePrompt } from "@/lib/prompts/resume"
 import { createClient } from "@/lib/supabase/server"
+import withTimeout from "@/lib/timeout"
 
 export async function POST(req: NextRequest) {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const authResult = await withTimeout(
+        supabase.auth.getUser(),
+        5000,
+        { data: { user: null }, error: null } as any
+    )
+    const { data: { user } } = authResult
     if (!user) {
         return Response.json({ error: "未登录" }, { status: 401 })
     }

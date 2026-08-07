@@ -29,7 +29,7 @@ export async function DELETE(req: Request) {
 
     const { data: conversation, error: findError } = await withTimeout(
         supabase.from("conversations").select("id, user_id, title").eq("id", id).single(),
-        3000,
+        5000,
         { data: null, error: new Error('Query timeout') } as any
     )
 
@@ -43,7 +43,7 @@ export async function DELETE(req: Request) {
 
     const { error: msgError } = await withTimeout(
         supabase.from("messages").delete().eq("conversation_id", id),
-        3000,
+        5000,
         { error: new Error('Delete messages timeout') } as any
     )
 
@@ -53,7 +53,7 @@ export async function DELETE(req: Request) {
 
     const { data: deletedRows, error } = await withTimeout(
         supabase.from("conversations").delete().eq("id", id).select("id"),
-        3000,
+        5000,
         { data: null, error: new Error('Delete conversation timeout') } as any
     )
 
@@ -96,7 +96,7 @@ export async function GET() {
             .select("id, title, type, interview_data, created_at")
             .eq("user_id", user.id)
             .order("created_at", { ascending: true }),
-        3000,
+        5000,
         { data: [], error: new Error('Query timeout') } as any
     )
 

@@ -4,11 +4,24 @@ import { generateText } from "ai";
 import { sectionOptimizePrompt } from "@/lib/prompts/resume";
 import { getJobs, getResumeExamples, formatJobsForPrompt, formatExamplesForPrompt } from "@/lib/career-data/loader";
 import { createClient } from "@/lib/supabase/server";
+import withTimeout from "@/lib/timeout";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  console.log("[OPTIMIZE] Checking auth...");
+  const authResult = await withTimeout(
+    supabase.auth.getUser(),
+    5000,
+    { data: { user: null }, error: null } as any
+  );
+  const { data: { user }, error: authError } = authResult;
+  console.log("[OPTIMIZE] Auth result:", { 
+    hasUser: !!user, 
+    userId: user?.id, 
+    authError: authError?.message 
+  });
   if (!user) {
+    console.warn("[OPTIMIZE] Unauthorized: user is null");
     return Response.json({ error: "未登录" }, { status: 401 });
   }
 

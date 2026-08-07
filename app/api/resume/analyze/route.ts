@@ -5,10 +5,16 @@ import { buildAnalyzePrompt } from "@/lib/prompts/resume";
 import { getJobs, getResumeExamples, formatJobsForPrompt, formatExamplesForPrompt } from "@/lib/career-data/loader";
 import { createClient } from "@/lib/supabase/server";
 import { getJobTitle } from "@/lib/career-config";
+import withTimeout from "@/lib/timeout";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const authResult = await withTimeout(
+    supabase.auth.getUser(),
+    5000,
+    { data: { user: null }, error: null } as any
+  );
+  const { data: { user } } = authResult;
   if (!user) {
     return Response.json({ error: "未登录" }, { status: 401 });
   }

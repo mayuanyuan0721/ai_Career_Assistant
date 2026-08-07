@@ -28,6 +28,7 @@ export default async function ChatDetailPage({ params }: { params: Promise<{ id:
 
     return (
         <ClientChatShell 
+            key={id}
             user={user || null} 
             initialMessages={initialMessages} 
             initialConversationId={id}

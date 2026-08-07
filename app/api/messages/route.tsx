@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
             .eq("id", conversationId)
             .eq("user_id", user.id)
             .single(),
-        3000,
+        5000,
         { data: null, error: new Error('Query timeout') } as any
     )
 
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
             .eq("id", conversationId)
             .eq("user_id", user.id)
             .single(),
-        3000,
+        5000,
         { data: null, error: new Error('Query timeout') } as any
     )
 

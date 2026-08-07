@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { ArrowUp, Square } from "lucide-react"
 
 interface Props {
     onSend: (text: string) => void
@@ -35,7 +34,7 @@ export default function ChatInput({ onSend, isLoading, onStop, placeholder, disa
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={placeholder ?? "\u7ed9 AI \u53d1\u9001\u6d88\u606f..."}
+                placeholder={placeholder ?? "给 AI 发送消息..."}
                 disabled={isLoading || disabled}
                 className="min-h-[44px] resize-none"
                 rows={1}
@@ -43,20 +42,18 @@ export default function ChatInput({ onSend, isLoading, onStop, placeholder, disa
             {isLoading && onStop ? (
                 <Button
                     onClick={onStop}
-                    size="icon"
                     variant="outline"
-                    className="shrink-0 h-[44px] w-[44px]"
+                    className="shrink-0 h-[44px] px-4"
                 >
-                    <Square className="h-4 w-4" />
+                    停止
                 </Button>
             ) : (
                 <Button
                     onClick={handleSubmit}
                     disabled={isLoading || disabled || !text.trim()}
-                    size="icon"
-                    className="shrink-0 h-[44px] w-[44px]"
+                    className="shrink-0 h-[44px] px-4"
                 >
-                    <ArrowUp className="h-4 w-4" />
+                    发送
                 </Button>
             )}
         </div>

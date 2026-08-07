@@ -1,5 +1,4 @@
 import ResumeOptimizePanel from "./ResumeOptimizePanel"
-import JobMatchPanel from "./JobMatchPanel"
 import InterviewPanel from "./InterviewPanel"
 import JDAnalysisPanel from "./JDAnalysisPanel"
 import InterviewPrepPanel from "./InterviewPrepPanel"
@@ -44,8 +43,6 @@ export default function RightPanel({ mode, resume, report, optimizedSections, an
                     conversationId={conversationId}
                     onTitleUpdate={onTitleUpdate} />
             )
-        case "job_match":
-            return <JobMatchPanel resume={resume} />
         case "interview":
             return <InterviewPanel resume={resume} />
         case "jd_analysis":

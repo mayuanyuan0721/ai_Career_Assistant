@@ -1,11 +1,17 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import withTimeout from "@/lib/timeout";
 
 // pdf-parse and mammoth are loaded dynamically to avoid bundling issues
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const authResult = await withTimeout(
+    supabase.auth.getUser(),
+    5000,
+    { data: { user: null }, error: null } as any
+  );
+  const { data: { user } } = authResult;
   if (!user) {
     return Response.json({ error: "未登录" }, { status: 401 });
   }

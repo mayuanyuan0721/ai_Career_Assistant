@@ -52,14 +52,17 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
     init: ({ initialConversationId, conversations = [], initialMessages = [], user = null }) => {
         console.log('[Store] Initializing with conversationId:', initialConversationId)
         const messagesMap: Record<string, UIMessage[]> = {}
+        
+        // 只保留当前对话的消息，彻底清空其他对话的数据
         if (initialMessages.length > 0) {
             messagesMap[initialConversationId] = initialMessages
         }
+        // 注意：这里不再保留旧对话的数据
         
         set({
             conversationId: initialConversationId,
             conversations,
-            messagesMap,
+            messagesMap, // 完全清空，不保留任何旧数据
             user,
             // 始终标记为已检查，避免 SSR user 为 null 时阻塞 UI
             // 客户端 checkAuth 会在后台异步确认登录状态
@@ -142,7 +145,7 @@ export const useAppStore = create<AppStoreState>()((set, get) => ({
         
         try {
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 5000)
+            const timeoutId = setTimeout(() => controller.abort(), 10000)
             const res = await fetch(`/api/messages?conversationId=${conversationId}`, { signal: controller.signal })
             clearTimeout(timeoutId)
             

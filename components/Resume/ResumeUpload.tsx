@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { ResumeReport } from "@/types/resume"
-import IndustrySelector from "@/components/ui/industry-selector"
 
 interface Props {
     onParsed: (data: any) => void
@@ -11,7 +10,7 @@ interface Props {
     onAnalysisStart: () => void
     conversationId: string;
     onTitleUpdate: () => void;
-    industry?: string;  // 新增行业参数
+    industry?: string;
 }
 
 const ACCEPTED_TYPES = ".md,.txt,.pdf,.docx";
@@ -200,7 +199,7 @@ export default function ResumeUpload({ onParsed, onAnalysis, onAnalysisEnd, onAn
             <input type="file" accept={ACCEPTED_TYPES} hidden
                 onChange={uploadFile} />
             <div>
-                📎 上传简历 (.md/.pdf/.docx)
+                上传简历 (.md/.pdf/.docx)
             </div>
         </label>
     )

@@ -7,21 +7,14 @@ type HealthStatus = {
 }
 
 let cachedHealth: HealthStatus = { isHealthy: true, lastCheck: 0 }
-const HEALTH_TTL = 30_000 // 30秒内复用检查结果
+const HEALTH_TTL = 30_000 // 健康结果缓存 30 秒
+const UNHEALTHY_TTL = 10_000 // 不健康结果只缓存 10 秒，避免一次抖动导致长时间快速失败
 const HEALTH_TIMEOUT = 3000 // 健康检查超时 3s
 
-export async function checkSupabaseHealth(): Promise<boolean> {
-    const now = Date.now()
-
-    // 缓存有效期内直接返回
-    if (now - cachedHealth.lastCheck < HEALTH_TTL) {
-        return cachedHealth.isHealthy
-    }
-
+async function probeOnce(): Promise<boolean> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT)
     try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), HEALTH_TIMEOUT)
-
         // 用 Supabase REST API 根路径做轻量探活
         const res = await fetch(
             `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`,
@@ -30,21 +23,40 @@ export async function checkSupabaseHealth(): Promise<boolean> {
                     apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
                 },
                 signal: controller.signal,
+                cache: 'no-store',
             }
         )
-        clearTimeout(timeoutId)
-
-        // 任何 HTTP 响应（包括 404）都说明 Supabase 服务可达
-        // 404 可能只是根路径没有对应表，但服务本身是在线的
-        const isHealthy = true
-        cachedHealth = { isHealthy, lastCheck: now }
-        return isHealthy
-    } catch {
-        // fetch 完全失败（网络不可达/DNS 失败/超时）才标记为不健康
-        cachedHealth = { isHealthy: false, lastCheck: now }
-        console.warn('[Supabase Health] Connection failed, will fast-fail for 30s')
+        // 任何 HTTP 响应（包括 401/404）都说明 Supabase 服务可达
+        void res
+        return true
+    } catch (err) {
+        console.warn('[Supabase Health] Probe failed:', err instanceof Error ? err.message : err)
         return false
+    } finally {
+        clearTimeout(timeoutId)
     }
+}
+
+export async function checkSupabaseHealth(): Promise<boolean> {
+    const now = Date.now()
+
+    // 缓存有效期内直接返回
+    const ttl = cachedHealth.isHealthy ? HEALTH_TTL : UNHEALTHY_TTL
+    if (now - cachedHealth.lastCheck < ttl) {
+        return cachedHealth.isHealthy
+    }
+
+    // 失败时重试一次，避免瞬时网络抖动导致 30 秒内全部请求 503
+    let isHealthy = await probeOnce()
+    if (!isHealthy) {
+        isHealthy = await probeOnce()
+    }
+
+    cachedHealth = { isHealthy, lastCheck: Date.now() }
+    if (!isHealthy) {
+        console.warn(`[Supabase Health] Connection failed, will fast-fail for ${UNHEALTHY_TTL / 1000}s`)
+    }
+    return isHealthy
 }
 
 // 重置健康状态（用于测试或手动刷新）

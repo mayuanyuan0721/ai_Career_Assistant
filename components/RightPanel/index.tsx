@@ -1,6 +1,9 @@
 import ResumeOptimizePanel from "./ResumeOptimizePanel"
 import JobMatchPanel from "./JobMatchPanel"
 import InterviewPanel from "./InterviewPanel"
+import JDAnalysisPanel from "./JDAnalysisPanel"
+import InterviewPrepPanel from "./InterviewPrepPanel"
+import CareerTranslatorPanel from "./CareerTranslatorPanel"
 import { Mode } from "@/types/chat"
 import { ResumeReport, OptimizedSection } from "@/types/resume"
 
@@ -45,5 +48,11 @@ export default function RightPanel({ mode, resume, report, optimizedSections, an
             return <JobMatchPanel resume={resume} />
         case "interview":
             return <InterviewPanel resume={resume} />
+        case "jd_analysis":
+            return <JDAnalysisPanel resume={resume} />
+        case "interview_prep":
+            return <InterviewPrepPanel resume={resume} />
+        case "career_translate":
+            return <CareerTranslatorPanel resume={resume} />
     }
 }

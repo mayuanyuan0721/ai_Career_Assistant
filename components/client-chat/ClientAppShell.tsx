@@ -192,49 +192,58 @@ export default function ClientChatShell({
     }, [])
 
     // Callback to bridge Message -> RightPanel
-    const handleApplyOptimization = useCallback((key: string, content: string) => {
-        console.log('[ClientChatShell] Applying optimization:', key)
-        console.log('[ClientChatShell] Content preview:', content.substring(0, 100))
+    const handleApplyOptimization = useCallback((key: string, aiContent: string, userOriginal: string) => {
+        console.log('[ClientChatShell] Applying optimization:', { key, userOriginalLen: userOriginal.length, aiContentLen: aiContent.length })
         
-        // 提取 AI 回复中"## 项目描述"部分的内容
-        let extractedDescription = content
-        const descriptionMatch = content.match(/## 项目描述\s*\n([\s\S]*?)(?=\n## |\n### |$)/)
-        if (descriptionMatch) {
-            extractedDescription = descriptionMatch[1].trim()
-        }
-        
-        // 尝试找到要替换的目标项目
+        // 用用户原始消息在简历中查找匹配的段落
         let targetProjectIndex: number | undefined = undefined
-        
-        // 尝试从 content 中提取项目名称
-        const projectNameMatch = content.match(/## 项目名称\s*\n\s*(.*)/)
-        if (projectNameMatch && resume?.projects) {
-            const mentionedProjectName = projectNameMatch[1].trim()
-            
-            // 查找最相似的项目
+        let originalDescription = userOriginal
+
+        if (userOriginal && resume?.projects) {
+            // 在简历项目中查找与用户消息最匹配的段落
             for (let i = 0; i < resume.projects.length; i++) {
                 const project = resume.projects[i]
-                if (project.name && (
-                    project.name.includes(mentionedProjectName) ||
-                    mentionedProjectName.includes(project.name)
-                )) {
+                const desc = project.description || ''
+                // 精确包含或高重叠度匹配
+                if (desc && (desc.includes(userOriginal) || userOriginal.includes(desc))) {
                     targetProjectIndex = i
+                    originalDescription = desc
                     break
                 }
             }
+            // 如果没有完全匹配，尝试按关键词相似度匹配
+            if (targetProjectIndex === undefined) {
+                let bestScore = 0
+                for (let i = 0; i < resume.projects.length; i++) {
+                    const project = resume.projects[i]
+                    const desc = project.description || ''
+                    if (!desc) continue
+                    // 计算共同词数
+                    const userWords = new Set(userOriginal.split(/\s+|[，。、；]/).filter((w: string) => w.length > 1))
+                    const descWords = new Set(desc.split(/\s+|[，。、；]/).filter((w: string) => w.length > 1))
+                    let common = 0
+                    userWords.forEach(w => { if (descWords.has(w)) common++ })
+                    const score = common / Math.max(userWords.size, 1)
+                    if (score > bestScore && score > 0.3) {
+                        bestScore = score
+                        targetProjectIndex = i
+                        originalDescription = desc
+                    }
+                }
+            }
         }
-        
-        // 如果没有找到匹配的项目，默认第一个项目
-        if (targetProjectIndex === undefined && resume?.projects && resume.projects.length > 0) {
+
+        // 默认第一个项目
+        if (targetProjectIndex === undefined && resume?.projects?.length > 0) {
             targetProjectIndex = 0
+            originalDescription = resume.projects[0].description || ''
         }
-        
-        // 设置待审核的优化内容并打开对话框
+
         setPendingOptimization({
             key,
-            originalContent: '',  // 不再需要，直接从 resume 读取
-            optimizedContent: content,
-            extractedDescription,
+            originalContent: originalDescription,
+            optimizedContent: aiContent,
+            extractedDescription: aiContent,
             targetProjectIndex
         })
         setShowReviewModal(true)
@@ -349,6 +358,7 @@ export default function ClientChatShell({
                     resume={resume}
                     optimizedContent={pendingOptimization.optimizedContent}
                     extractedDescription={pendingOptimization.extractedDescription}
+                    originalContent={pendingOptimization.originalContent}
                     targetProjectIndex={pendingOptimization.targetProjectIndex}
                     onAccept={(content) => {
                         console.log('[ClientChatShell] User accepted optimization')

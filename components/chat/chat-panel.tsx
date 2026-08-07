@@ -37,7 +37,7 @@ interface Props {
     setMode: (mode: Mode) => void
     resume: any
     report: ResumeReport | null
-    onApplySectionOptimization?: (key: string, content: string) => void  // 新增回调
+    onApplySectionOptimization?: (key: string, aiContent: string, userOriginal: string) => void
 }
 
 export default function ChatPanel({

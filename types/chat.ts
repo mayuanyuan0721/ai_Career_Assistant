@@ -1,4 +1,4 @@
-export type Mode = "resume_optimize" | "job_match" | "interview"
+export type Mode = "resume_optimize" | "job_match" | "interview" | "jd_analysis" | "interview_prep" | "career_translate"
 
 export type ConversationType = "chat" | "interview"
 

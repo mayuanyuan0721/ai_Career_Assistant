@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import styles from "@/css/optimizationReview.module.css"
 
 interface Project {
@@ -13,10 +12,11 @@ interface Project {
 }
 
 interface Props {
-  resume: any  // 完整的简历数据
-  optimizedContent: string  // AI 的完整回复
-  extractedDescription: string  // 提取出的要替换的具体内容
-  targetProjectIndex?: number  // 要替换的项目索引
+  resume: any
+  optimizedContent: string
+  extractedDescription: string
+  originalContent: string
+  targetProjectIndex?: number
   onAccept: (content: string) => void
   onReject: () => void
   onClose: () => void
@@ -25,21 +25,14 @@ interface Props {
 export default function OptimizationReviewModal({
   resume,
   optimizedContent,
-  extractedDescription,
+  originalContent,
   targetProjectIndex,
   onAccept,
   onReject,
   onClose
 }: Props) {
-  console.log('[OptimizationReviewModal] Render with:', {
-    hasResume: !!resume,
-    projectsCount: resume?.projects?.length || 0,
-    targetProjectIndex,
-    extractedDescriptionLength: extractedDescription?.length || 0
-  })
-  
   const handleAccept = () => {
-    onAccept(extractedDescription)
+    onAccept(optimizedContent)
   }
 
   const handleReject = () => {
@@ -52,13 +45,13 @@ export default function OptimizationReviewModal({
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className={styles.header}>
-          <h2 className={styles.title}>优化建议确认</h2>
+          <h2 className={styles.title}>优化建议对比</h2>
           <button className={styles.closeBtn} onClick={onClose}>×</button>
         </div>
 
-        {/* Content - Two columns */}
+        {/* Content - Two columns diff view */}
         <div className={styles.content}>
-          {/* Left: Full Resume */}
+          {/* Left: Full Resume with red highlight */}
           <div className={styles.leftPanel}>
             <h3 className={styles.sectionTitle}>原始简历</h3>
             <div className={styles.resumeContainer}>
@@ -86,13 +79,15 @@ export default function OptimizationReviewModal({
                     <div className={styles.projectDesc}>
                       {isTarget ? (
                         <>
-                          <div className={styles.highlightLabel}>即将替换以下内容：</div>
-                          <div className={styles.highlightedDesc}>
-                            {project.description || "（暂无描述）"}
+                          <div className={styles.highlightLabel}>将被替换的内容：</div>
+                          <div className={styles.originalText}>
+                            {originalContent || project.description || "（暂无描述）"}
                           </div>
                         </>
                       ) : (
-                        project.description || "（暂无描述）"
+                        <span className={styles.normalText}>
+                          {project.description || "（暂无描述）"}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -101,27 +96,23 @@ export default function OptimizationReviewModal({
             </div>
           </div>
 
-          {/* Right: AI Suggestion */}
+          {/* Right: AI optimized content */}
           <div className={styles.rightPanel}>
-            <h3 className={styles.sectionTitle}>AI 优化建议</h3>
+            <h3 className={styles.sectionTitle}>AI 优化后</h3>
             <div className={styles.suggestionContainer}>
-              {extractedDescription}
+              <div className={styles.optimizedText}>
+                {optimizedContent}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Actions */}
         <div className={styles.actions}>
-          <button
-            className={styles.btnAccept}
-            onClick={handleAccept}
-          >
+          <button className={styles.btnAccept} onClick={handleAccept}>
             接受修改
           </button>
-          <button
-            className={styles.btnReject}
-            onClick={handleReject}
-          >
+          <button className={styles.btnReject} onClick={handleReject}>
             跳过
           </button>
         </div>

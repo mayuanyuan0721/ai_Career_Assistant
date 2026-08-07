@@ -23,20 +23,32 @@ export default function IndustrySelector({ value, onChange }: Props) {
 
     // 加载行业列表
     useEffect(() => {
-        fetch("/api/industries")
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+        fetch("/api/industries", { signal: controller.signal })
             .then(res => res.json())
             .then(data => {
+                clearTimeout(timeoutId)
                 setIndustries(data.industries || [])
                 // 设置默认值
                 if (value) {
-                    const ind = data.industries.find((i: Industry) => i.slug === value)
+                    const ind = (data.industries || []).find((i: Industry) => i.slug === value)
                     if (ind) setSelected(ind)
-                } else if (data.industries.length > 0) {
+                } else if (data.industries?.length > 0) {
                     setSelected(data.industries[0])
                     onChange?.(data.industries[0].slug)
                 }
             })
-            .catch(err => console.error("[IndustrySelector] Failed to load:", err))
+            .catch(err => {
+                clearTimeout(timeoutId)
+                console.warn("[IndustrySelector] Failed to load:", err instanceof Error ? err.message : String(err))
+            })
+
+        return () => {
+            clearTimeout(timeoutId)
+            controller.abort()
+        }
     }, [value])
 
     const handleSelect = (industry: Industry) => {

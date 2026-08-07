@@ -4,23 +4,23 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
-import { useState } from "react"
 
 interface MessageProps {
     role: "user" | "assistant"
     content: string
     isStreaming?: boolean
-    onApplySectionOptimization?: (key: string, content: string) => void  // 新增回调
+    previousUserContent?: string
+    onApplySectionOptimization?: (key: string, aiContent: string, userOriginal: string) => void
 }
 
 export default function Message({ 
     role, 
     content, 
     isStreaming,
+    previousUserContent,
     onApplySectionOptimization
 }: MessageProps) {
     const isUser = role === "user"
-    const isAssistant = !isUser
 
     return (
         <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
@@ -85,15 +85,13 @@ export default function Message({
                             {content}
                         </ReactMarkdown>
                         <div className="flex gap-2 mt-2">
-                            {!isUser && (
+                            {!isUser && onApplySectionOptimization && (
                                 <button
                                     onClick={() => {
-                                        console.log('[Message] Button clicked!')
                                         const key = `assistant_${Date.now()}`
-                                        const optimized = content.replace(/\s*$/, '')
-                                        console.log('[Message] Calling callback:', { key, optimized: optimized.substring(0, 50) })
-                                        onApplySectionOptimization?.(key, optimized)
-                                        console.log('[Message] Callback called successfully')
+                                        const aiContent = content.replace(/\s*$/, '')
+                                        const userOriginal = previousUserContent || ''
+                                        onApplySectionOptimization(key, aiContent, userOriginal)
                                     }}
                                     style={{
                                         background: '#f0fdf4',
@@ -105,10 +103,9 @@ export default function Message({
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    ✨ 应用此建议到简历
+                                    应用此建议到简历
                                 </button>
                             )}
-                            {onApplySectionOptimization && !isUser && <span>[✅ Callback exists]</span>}
                             {isStreaming && <span className="streaming-cursor">▎</span>}
                         </div>
                     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAppStore } from "@/lib/store"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
     DialogFooter,
@@ -19,6 +20,7 @@ export default function AuthModal({ open, onClose }: Props) {
     const [loading, setLoading] = useState(false)
     const [mode, setMode] = useState<"login" | "register">("login")
     const router = useRouter()
+    const { checkAuth, fetchConversations } = useAppStore()
 
     const handleLogin = async () => {
         setLoading(true)
@@ -31,7 +33,14 @@ export default function AuthModal({ open, onClose }: Props) {
             alert("\u767b\u5f55\u5931\u8d25\uff0c\u8bf7\u8f93\u5165\u6b63\u786e\u7684\u90ae\u7bb1\u548c\u5bc6\u7801")
         } else {
             onClose()
+            // 登录成功后，强制刷新页面以重新初始化 store
             router.refresh()
+            
+            // 等待一小段时间确保 refresh 完成，然后重新加载数据
+            setTimeout(async () => {
+                await checkAuth()
+                await fetchConversations()
+            }, 100)
         }
         setLoading(false)
     }

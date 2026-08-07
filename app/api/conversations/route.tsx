@@ -1,12 +1,18 @@
 import { createClient } from "@/lib/supabase/server"
+import { checkSupabaseHealth } from "@/lib/supabase/health"
 import withTimeout from "@/lib/timeout"
 
 export async function DELETE(req: Request) {
+    const isHealthy = await checkSupabaseHealth()
+    if (!isHealthy) {
+        return Response.json({ error: "Service unavailable" }, { status: 503 })
+    }
+
     const supabase = await createClient()
     
     const authResult = await withTimeout(
         supabase.auth.getUser(),
-        5000,
+        3000,
         { data: { user: null }, error: null } as any
     )
     
@@ -35,8 +41,6 @@ export async function DELETE(req: Request) {
         return Response.json({ error: "No permission" }, { status: 403 })
     }
 
-    // 先删除消息，再删除会话；如果第二步失败，整个操作返回错误
-    // 注意：Supabase 不支持服务端事务，这里通过顺序执行 + 错误回滚提示来处理
     const { error: msgError } = await withTimeout(
         supabase.from("messages").delete().eq("conversation_id", id),
         5000,
@@ -67,11 +71,16 @@ export async function DELETE(req: Request) {
 }
 
 export async function GET() {
+    const isHealthy = await checkSupabaseHealth()
+    if (!isHealthy) {
+        return Response.json({ conversations: [] }, { status: 200 })
+    }
+
     const supabase = await createClient()
     
     const authResult = await withTimeout(
         supabase.auth.getUser(),
-        5000,
+        3000,
         { data: { user: null }, error: null } as any
     )
     
@@ -81,7 +90,6 @@ export async function GET() {
         return Response.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Include type field in query
     const { data, error } = await withTimeout(
         supabase
             .from("conversations")
@@ -100,11 +108,16 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+    const isHealthy = await checkSupabaseHealth()
+    if (!isHealthy) {
+        return Response.json({ error: "Service unavailable" }, { status: 503 })
+    }
+
     const supabase = await createClient()
     
     const authResult = await withTimeout(
         supabase.auth.getUser(),
-        5000,
+        3000,
         { data: { user: null }, error: null } as any
     )
     
@@ -128,7 +141,7 @@ export async function POST(req: Request) {
             })
             .select()
             .single(),
-        5000,
+        3000,
         { data: null, error: new Error('Insert timeout') } as any
     )
 
@@ -138,4 +151,3 @@ export async function POST(req: Request) {
 
     return Response.json({ conversation: data })
 }
-

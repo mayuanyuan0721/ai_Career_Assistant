@@ -3,9 +3,7 @@
 import { useState } from "react"
 import styles from "@/css/resumePanel.module.css"
 import ResumeUpload from "@/components/Resume/ResumeUpload"
-import IndustrySelector from "@/components/ui/industry-selector"
 import { ResumeReport, OptimizedSection } from "@/types/resume"
-
 
 interface Props {
     resume: any;
@@ -21,7 +19,6 @@ interface Props {
     onTitleUpdate: () => void;
 }
 
-
 export default function ResumeOptimizePanel({
     resume, report, optimizedSections, onResumeChange, onReport,
     analyzing, onAnalyzingChange, onSectionOptimized, onShowPreview,
@@ -30,12 +27,13 @@ export default function ResumeOptimizePanel({
 
     const [optimizingKey, setOptimizingKey] = useState<string | null>(null);
     const [optimizeResult, setOptimizeResult] = useState<any>(null);
-    const [selectedIndustry, setSelectedIndustry] = useState<string>("frontend");
+    const [lastOptimizedKey, setLastOptimizedKey] = useState<string | null>(null); // 记录最后优化的 section key
 
     async function handleDeepOptimize(section: any, index: number) {
         const key = `${section.type}_${index}`;
         setOptimizingKey(key);
         setOptimizeResult(null);
+        setLastOptimizedKey(null);
 
         try {
             const res = await fetch("/api/resume/optimize", {
@@ -45,7 +43,7 @@ export default function ResumeOptimizePanel({
                     section: section.type,
                     sectionName: section.name || "",
                     original: section.original,
-                    targetRole: "前端开发工程师",
+                    targetRole: "",
                     skills: resume?.skills || []
                 })
             });
@@ -57,8 +55,7 @@ export default function ResumeOptimizePanel({
 
             const data = await res.json();
             setOptimizeResult(data.data);
-
-            // Auto-accept the optimization
+            setLastOptimizedKey(key); // 记录是哪个 section 的优化结果
             onSectionOptimized(key, data.data.optimized);
         } catch (err) {
             console.error("Optimize error:", err);
@@ -73,14 +70,6 @@ export default function ResumeOptimizePanel({
             <h2>简历优化</h2>
             <p className={styles.subTitle}>AI Career Assistant</p>
 
-            {/* 行业选择器 */}
-            <div style={{ marginBottom: "12px" }}>
-                <IndustrySelector 
-                    value={selectedIndustry} 
-                    onChange={setSelectedIndustry} 
-                />
-            </div>
-
             {!resume ? (
                 <div className={styles.empty}>
                     <h3>上传你的简历</h3>
@@ -92,28 +81,24 @@ export default function ResumeOptimizePanel({
                             onParsed={onResumeChange}
                             onAnalysisStart={() => { onAnalyzingChange(true) }}
                             onAnalysisEnd={() => { onAnalyzingChange(false) }}
-                            onTitleUpdate={onTitleUpdate}
-                            industry={selectedIndustry} />
+                            onTitleUpdate={onTitleUpdate} />
                     )}
                 </div>
             ) : (
                 <div>
-                    {/* File status */}
                     <div className={styles.card}>
                         <div className={styles.file}>
-                            <span>📄</span>
                             <div>
                                 <h4>简历已上传</h4>
-                                <p>{analyzing ? "⏳ AI分析中..." : "✅ 分析完成"}</p>
+                                <p>{analyzing ? "AI 分析中..." : "分析完成"}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Score summary */}
                     {report && !report._raw && (
                         <div className={styles.card}>
                             <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>
-                                📊 综合评分：
+                                综合评分：
                                 <span style={{
                                     fontSize: 28,
                                     fontWeight: 700,
@@ -127,7 +112,6 @@ export default function ResumeOptimizePanel({
                         </div>
                     )}
 
-                    {/* Sections with optimize buttons */}
                     {report?.sections?.map((sec, i) => {
                         const key = `${sec.type}_${i}`;
                         const isOptimized = optimizedSections[key]?.accepted;
@@ -137,8 +121,7 @@ export default function ResumeOptimizePanel({
                             <div key={i} className={styles.section}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                     <h3 style={{ margin: 0, fontSize: 14 }}>
-                                        {sec.type === "project" ? "📁" : sec.type === "skills" ? "🛠" : "💼"}
-                                        {" "}{sec.name || sec.type}
+                                        {sec.name || sec.type}
                                     </h3>
                                     <span style={{
                                         fontSize: 12,
@@ -147,7 +130,6 @@ export default function ResumeOptimizePanel({
                                     }}>{sec.score}分</span>
                                 </div>
 
-                                {/* Show optimized text if accepted */}
                                 {isOptimized && (
                                     <div style={{
                                         marginTop: 8,
@@ -158,11 +140,10 @@ export default function ResumeOptimizePanel({
                                         color: "#166534",
                                         whiteSpace: "pre-wrap"
                                     }}>
-                                        ✅ {optimizedSections[key].optimized.slice(0, 120)}...
+                                        {optimizedSections[key].optimized.slice(0, 120)}...
                                     </div>
                                 )}
 
-                                {/* Deep optimize button */}
                                 <button
                                     className={styles.button}
                                     style={{
@@ -174,11 +155,10 @@ export default function ResumeOptimizePanel({
                                     onClick={() => handleDeepOptimize(sec, i)}
                                     disabled={isOptimizing}
                                 >
-                                    {isOptimizing ? "⏳ 优化中..." : isOptimized ? "✅ 已优化 - 重新优化" : "🔧 深度优化此段"}
+                                    {isOptimizing ? "优化中..." : isOptimized ? "已优化 - 重新优化" : "深度优化此段"}
                                 </button>
 
-                                {/* Show deep optimize result */}
-                                {optimizeResult && optimizingKey === null && `${sec.type}_${i}` === key && (
+                                {optimizeResult && optimizingKey === null && lastOptimizedKey === key && (
                                     <div style={{ marginTop: 8 }}>
                                         {optimizeResult.interview_questions?.length > 0 && (
                                             <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
@@ -196,7 +176,6 @@ export default function ResumeOptimizePanel({
                         );
                     })}
 
-                    {/* Action buttons */}
                     {report && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 15 }}>
                             <button
@@ -204,7 +183,7 @@ export default function ResumeOptimizePanel({
                                 onClick={onShowPreview}
                                 style={{ background: "#2563eb" }}
                             >
-                                📄 预览优化后简历
+                                预览优化后简历
                             </button>
                             <ResumeUpload
                                 conversationId={conversationId}
@@ -212,8 +191,7 @@ export default function ResumeOptimizePanel({
                                 onParsed={onResumeChange}
                                 onAnalysisStart={() => { onAnalyzingChange(true) }}
                                 onAnalysisEnd={() => { onAnalyzingChange(false) }}
-                                onTitleUpdate={onTitleUpdate}
-                                industry={selectedIndustry} />
+                                onTitleUpdate={onTitleUpdate} />
                         </div>
                     )}
                 </div>

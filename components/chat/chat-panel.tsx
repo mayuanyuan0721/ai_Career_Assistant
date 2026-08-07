@@ -5,7 +5,6 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { LogOut, User, Mic, ArrowLeft } from "lucide-react"
 import MessageList from "./message-list"
 import ChatInput from "./chat-input"
 import ModeSelector from "./mode-selector"
@@ -37,7 +36,7 @@ interface Props {
     setMode: (mode: Mode) => void
     resume: any
     report: ResumeReport | null
-    onApplySectionOptimization?: (key: string, content: string) => void  // 新增回调
+    onApplySectionOptimization?: (key: string, aiContent: string, userOriginal: string) => void
 }
 
 export default function ChatPanel({
@@ -95,10 +94,9 @@ export default function ChatPanel({
     const prevInitialMessagesRef = useRef(initialMessages)
     
     useEffect(() => {
-        // 当 conversationId 变化或 initialMessages 引用变化时，重新设置消息
+        // 当 conversationId 变化时，同步消息
         const idChanged = prevConversationIdRef.current !== conversationId
         const messagesChanged = prevInitialMessagesRef.current !== initialMessages
-        // 关键：检查 useChat 内部的消息数量是否与 initialMessages 一致
         const lengthMismatch = messages.length !== initialMessages.length
         
         console.log('[ChatPanel] Effect triggered:', { 
@@ -109,24 +107,19 @@ export default function ChatPanel({
             prevConvId: prevConversationIdRef.current,
             initialMsgsLen: initialMessages.length,
             currentMsgsLen: messages.length,
-            initialMsgs: initialMessages.slice(0, 3).map(m => ({ id: m.id, role: m.role }))
         })
         
-        // 强制同步：如果有初始消息且 useChat 内部数量不一致，必须设置
-        const shouldUpdate = initialMessages.length > 0 && (idChanged || messagesChanged || lengthMismatch)
-        
-        console.log('[ChatPanel] Should update?', { 
-            shouldUpdate,
-            initialMsgsLen: initialMessages.length,
-            currentMsgsLen: messages.length
-        })
-        
-        if (shouldUpdate) {
+        // conversationId 变化时，必须同步消息（包括清空空对话的情况）
+        if (idChanged) {
             prevConversationIdRef.current = conversationId
             prevInitialMessagesRef.current = initialMessages
-            console.log('[ChatPanel] Updating messages:', { count: initialMessages.length })
+            console.log('[ChatPanel] Conversation changed, syncing messages:', { count: initialMessages.length })
             setMessages(initialMessages as any)
-            console.log('[ChatPanel] Messages updated in useChat')
+        } else if (initialMessages.length > 0 && (messagesChanged || lengthMismatch)) {
+            // 非切换对话，但 initialMessages 更新时也要同步
+            prevInitialMessagesRef.current = initialMessages
+            console.log('[ChatPanel] Initial messages updated:', { count: initialMessages.length })
+            setMessages(initialMessages as any)
         }
     }, [initialMessages, setMessages, conversationId, messages.length])
 
@@ -190,22 +183,17 @@ export default function ChatPanel({
                                 variant="ghost" 
                                 size="sm" 
                                 onClick={() => setMode('resume_optimize')}
-                                className="flex items-center gap-1"
                             >
-                                <ArrowLeft className="h-4 w-4" />
-                                Back to Chat
+                                返回聊天
                             </Button>
-                            <Mic className="h-5 w-5 text-blue-500" />
-                            <h2 className="text-lg font-semibold">Interview Mode</h2>
+                            <h2 className="text-lg font-semibold">面试模式</h2>
                         </div>
                         <div className="flex items-center gap-2">
                             {user ? (
                                 <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4" />
                                     <span className="text-sm">{user.email}</span>
                                     <Button variant="ghost" size="sm" onClick={onLogout}>
-                                        <LogOut className="h-4 w-4 mr-1" />
-                                        Logout
+                                        退出
                                     </Button>
                                 </div>
                             ) : (
@@ -219,14 +207,13 @@ export default function ChatPanel({
 
                 <div className="flex-1 flex items-center justify-center p-8">
                     <div className="text-center max-w-md">
-                        <div className="text-6xl mb-4">🎤</div>
-                        <h3 className="text-xl font-semibold mb-2">Interview in Progress</h3>
+                        <h3 className="text-xl font-semibold mb-2">面试进行中</h3>
                         <p className="text-muted-foreground mb-6">
-                            Please use the right panel to interact with the AI interviewer.<br/>
-                            The interviewer will ask questions based on your resume.
+                            请在右侧面板与 AI 面试官互动。<br/>
+                            面试官将根据你的简历提出问题。
                         </p>
                         <div className="space-y-2 text-sm text-left bg-blue-50 p-4 rounded-lg">
-                            <p className="font-medium">📌 Interview Features:</p>
+                            <p className="font-medium">面试特点：</p>
                             <ul className="list-disc list-inside text-muted-foreground space-y-1">
                                 <li>One question at a time</li>
                                 <li>Real-time scoring (X/10)</li>
@@ -257,11 +244,9 @@ export default function ChatPanel({
                     <div className="flex items-center gap-2">
                         {user ? (
                             <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
                                 <span className="text-sm">{user.email}</span>
                                 <Button variant="ghost" size="sm" onClick={onLogout}>
-                                    <LogOut className="h-4 w-4 mr-1" />
-                                    Logout
+                                    退出
                                 </Button>
                             </div>
                         ) : (

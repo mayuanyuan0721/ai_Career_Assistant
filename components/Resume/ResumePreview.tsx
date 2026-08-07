@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import styles from "@/css/resumePreview.module.css"
 
 interface Project {
@@ -202,6 +202,7 @@ function parseStarFormat(text: string): { isStar: boolean; sections: StarSection
 
 export default function ResumePreview({ resume, optimizedSections, onClose }: Props) {
   const [exporting, setExporting] = useState(false)
+  const pageRef = useRef<HTMLDivElement>(null)
   const skillGroups = categorizeSkills(resume.skills || [])
 
   function getProjectDescription(project: Project, index: number): string {
@@ -243,12 +244,40 @@ export default function ResumePreview({ resume, optimizedSections, onClose }: Pr
     return project.description || ""
   }
 
-  function handlePrint() {
+  async function handlePrint() {
+    if (!pageRef.current || exporting) return
     setExporting(true)
-    setTimeout(() => {
-      window.print()
+    
+    try {
+      const element = pageRef.current
+      const fileName = resume.basic?.name ? `${resume.basic.name}_简历.pdf` : "简历.pdf"
+      
+      const opt = {
+        margin: 0,
+        filename: fileName,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true,
+          letterRendering: true 
+        },
+        jsPDF: { 
+          unit: "mm", 
+          format: "a4", 
+          orientation: "portrait"
+        },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] }
+      }
+      
+      // 动态导入 html2pdf.js（纯浏览器库，不能在服务端加载）
+      const html2pdf = (await import("html2pdf.js")).default
+      await html2pdf().set(opt as any).from(element).save()
+    } catch (err) {
+      console.error("[ResumePreview] PDF export failed:", err)
+      alert("导出失败，请重试")
+    } finally {
       setExporting(false)
-    }, 100)
+    }
   }
 
   // Build personal info line
@@ -270,11 +299,11 @@ export default function ResumePreview({ resume, optimizedSections, onClose }: Pr
       <div className={styles.toolbar}>
         <button className={styles.closeBtn} onClick={onClose}>关闭预览</button>
         <button className={styles.printBtn} onClick={handlePrint} disabled={exporting}>
-          {exporting ? "导出中..." : "导出 PDF"}
+          {exporting ? "导出中..." : "下载 PDF"}
         </button>
       </div>
 
-      <div className={styles.page}>
+      <div className={styles.page} ref={pageRef}>
         {/* ── Header ── */}
         <div className={styles.header}>
           <h1 className={styles.name}>{resume.basic?.name || "姓名"}</h1>
@@ -324,7 +353,6 @@ export default function ResumePreview({ resume, optimizedSections, onClose }: Pr
                         </span>
                         {item.degree && <span className={styles.entryMeta}>{item.degree}</span>}
                         {item.major && <span className={styles.entryMeta}>{item.major}</span>}
-                        {item.tag && <span className={styles.entryTag}>{item.tag}</span>}
                       </div>
                       <div className={styles.entryRight}>
                         {(item.startDate || item.endDate) && (
@@ -462,22 +490,11 @@ export default function ResumePreview({ resume, optimizedSections, onClose }: Pr
           <>
             <div className={styles.sectionHeader}>专业技能</div>
             <div className={styles.sectionContent}>
-              {Object.keys(skillGroups).length > 0 ? (
-                <ol className={styles.numberedList}>
-                  {Object.entries(skillGroups).map(([category, skills], index) => (
-                    <li key={index}>
-                      <span className={styles.skillCategory}>{category}：</span>
-                      {skills.join("、")}
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <ol className={styles.numberedList}>
-                  {resume.skills!.map((skill, index) => (
-                    <li key={index}>{skill}</li>
-                  ))}
-                </ol>
-              )}
+              <ol className={styles.numberedList}>
+                {resume.skills!.map((skill, index) => (
+                  <li key={index}>{skill}</li>
+                ))}
+              </ol>
             </div>
           </>
         )}

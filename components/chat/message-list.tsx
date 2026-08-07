@@ -13,22 +13,18 @@ interface MessageItem {
 interface Props {
     messages: MessageItem[]
     isLoading?: boolean
-    isThinking?: boolean
     isStreaming?: boolean
     reportComponent?: React.ReactNode
-    onApplySectionOptimization?: (key: string, content: string) => void  // 新增回调
+    onApplySectionOptimization?: (key: string, aiContent: string, userOriginal: string) => void
 }
 
 export default function MessageList({ 
     messages, 
     isLoading, 
-    isThinking, 
     isStreaming, 
     reportComponent,
-    onApplySectionOptimization  // 新增 prop
+    onApplySectionOptimization
 }: Props) {
-    // Support both isLoading shorthand and separate isThinking/isStreaming flags
-    const showThinking = isThinking ?? isLoading ?? false
     const activeStreaming = isStreaming ?? false
     let lastAssistantIdx = -1
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -36,6 +32,16 @@ export default function MessageList({
             lastAssistantIdx = i
             break
         }
+    }
+
+    // 为每条消息找到前一条用户消息
+    function getPreviousUserContent(idx: number): string | undefined {
+        for (let i = idx - 1; i >= 0; i--) {
+            if (messages[i].role === "user") {
+                return messages[i].content
+            }
+        }
+        return undefined
     }
 
     return (
@@ -57,27 +63,11 @@ export default function MessageList({
                             role={msg.role as "user" | "assistant"}
                             content={msg.content}
                             isStreaming={activeStreaming && idx === lastAssistantIdx}
-                            onApplySectionOptimization={onApplySectionOptimization}  // 传递回调给 Message
+                            previousUserContent={getPreviousUserContent(idx)}
+                            onApplySectionOptimization={onApplySectionOptimization}
                         />
                     )
                 ))}
-                {showThinking && (
-                    <div className="flex items-start gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium shrink-0 bg-muted">
-                            {"\ud83e\udd16"}
-                        </div>
-                        <div className="rounded-lg px-4 py-2 bg-muted">
-                            <span className="text-muted-foreground">
-                                {"\u601d\u8003\u4e2d"}
-                                <span className="inline-block ml-1">
-                                    <span style={{ animation: "thinking-dot 1.4s infinite", animationDelay: "0s" }}>{"."}</span>
-                                    <span style={{ animation: "thinking-dot 1.4s infinite", animationDelay: "0.2s" }}>{"."}</span>
-                                    <span style={{ animation: "thinking-dot 1.4s infinite", animationDelay: "0.4s" }}>{"."}</span>
-                                </span>
-                            </span>
-                        </div>
-                    </div>
-                )}
             </div>
         </ScrollArea>
     )

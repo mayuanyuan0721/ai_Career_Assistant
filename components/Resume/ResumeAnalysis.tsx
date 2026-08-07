@@ -45,12 +45,12 @@ function ExpressionTips({ tips }: { tips: ExpressionTip[] }) {
   if (!tips.length) return null;
   return (
     <div className={styles.exprTips}>
-      <h4>💡 强弱表达对比</h4>
+      <h4>强弱表达对比</h4>
       {tips.map((tip, i) => (
         <div key={i} className={styles.tipCard}>
-          <div className={styles.tipWeak}>❌ {tip.weak}</div>
-          <div className={styles.tipStrong}>✅ {tip.strong}</div>
-          <div className={styles.tipReason}>💬 {tip.reason}</div>
+          <div className={styles.tipWeak}>[弱] {tip.weak}</div>
+          <div className={styles.tipStrong}>[强] {tip.strong}</div>
+          <div className={styles.tipReason}>{tip.reason}</div>
         </div>
       ))}
     </div>
@@ -71,7 +71,7 @@ function ImprovementList({ suggestions }: { suggestions: ImprovementSuggestion[]
   };
   return (
     <div className={styles.improvements}>
-      <h4>🎯 改进建议（三层区分）</h4>
+      <h4>改进建议（三层区分）</h4>
       {suggestions.map((s, i) => (
         <div key={i} className={styles.improveCard}>
           <span className={`${styles.improveCategory} ${catMap[s.category] || styles.catSuggest}`}>

@@ -28,7 +28,11 @@ export default function ClientChatShell({
 }: Props) {
     const router = useRouter()
     const pathname = usePathname()
-    const initializedRef = useRef(false)
+    const resumeLoadedForConvRef = useRef<string | null>(null)
+    const isInitialMountRef = useRef(true)
+    
+    // 从 URL 中提取当前对话 ID（最可靠的来源）
+    const urlConvId = pathname?.split('/chat/')[1]?.split('/')[0] || ''
     
     const {
         conversationId,
@@ -43,6 +47,17 @@ export default function ClientChatShell({
         hasMessages,
         loadMessages,
     } = useAppStore()
+    
+    // 使用 useEffect 在每次 mount 时同步初始 conversationId
+    useEffect(() => {
+        console.log('[Mount effect] Running on every mount')
+        
+        // 每次 Mount 都更新 store 为最新的 initialConversationId
+        if (initialConversationId) {
+            selectConversation(initialConversationId)
+            console.log('[Mount effect] Updated store conversationId to:', initialConversationId)
+        }
+    }, [initialConversationId])
     
     const [mode, setMode] = useState<Mode>("resume_optimize")
     const [resume, setResume] = useState<any>(null)
@@ -66,58 +81,92 @@ export default function ClientChatShell({
     const storeUser = useAppStore((s) => s.user)
     const localUser = storeUser || user
     
-    console.log('[ClientChatShell] Render - conversationId:', conversationId, 'resume:', !!resume)
+    console.log('[ClientChatShell] Render - conversationId:', conversationId, 'urlConvId:', urlConvId, 'pathname:', pathname)
     
-    // Load resume from localStorage on mount
+    // Load resume from localStorage on mount (for current conversation only)
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem('resume-data')
-            console.log('[ClientChatShell] Loaded from localStorage:', saved ? 'found' : 'not found')
-            if (saved) {
-                const data = JSON.parse(saved)
-                console.log('[ClientChatShell] Resume data:', data)
-                setResume(data.resume)
-                setReport(data.report)
-                setOptimizedSections(data.optimizedSections || {})
-            }
-        } catch (err) {
-            console.error('[ClientChatShell] Failed to load resume:', err)
-        }
-    }, [])
-    
-    // Save resume to localStorage when it changes
-    useEffect(() => {
-        if (resume) {
-            try {
-                const data = { resume, report, optimizedSections }
-                localStorage.setItem('resume-data', JSON.stringify(data))
-            } catch (err) {
-                console.error('[ClientChatShell] Failed to save resume:', err)
-            }
-        }
-    }, [resume, report, optimizedSections])
-    
-    useEffect(() => {
-        console.log('[ClientChatShell] useEffect triggered, initializedRef:', initializedRef.current)
+        if (!initialConversationId) return
         
-        if (initializedRef.current) {
-            console.log('[ClientChatShell] Already initialized, skipping')
+        console.log('[Resume load] Loading for:', initialConversationId)
+        
+        // 先尝试读取当前对话的简历数据
+        let saved = localStorage.getItem(`resume-data-${initialConversationId}`)
+        
+        // 如果没有，尝试迁移旧版全局数据
+        if (!saved) {
+            const legacyData = localStorage.getItem('resume-data')
+            if (legacyData) {
+                console.log('[Resume load] Migrating legacy resume-data to per-conversation key')
+                localStorage.setItem(`resume-data-${initialConversationId}`, legacyData)
+                localStorage.removeItem('resume-data')
+                saved = legacyData
+            }
+        }
+        
+        console.log('[Resume load] Found data:', !!saved, 'for conv:', initialConversationId)
+        if (saved) {
+            const data = JSON.parse(saved)
+            setResume(data.resume)
+            setReport(data.report)
+            setOptimizedSections(data.optimizedSections || {})
+            resumeLoadedForConvRef.current = initialConversationId
+        } else {
+            // 新对话或无数据的对话，清空所有简历相关状态
+            console.log('[Resume load] No data found, clearing resume state')
+            setResume(null)
+            setReport(null)
+            setOptimizedSections({})
+            resumeLoadedForConvRef.current = initialConversationId
+        }
+        // 标记初始挂载完成
+        isInitialMountRef.current = false
+    }, [initialConversationId]) // 依赖项包含 initialConversationId
+    
+    // Save resume to localStorage when it changes (per conversation)
+    useEffect(() => {
+        if (!conversationId) return
+        // 初始挂载阶段不清除数据，避免误删刚加载的简历
+        if (isInitialMountRef.current && !resume) {
+            console.log('[ClientChatShell] Skipping save during initial mount, resume is null')
             return
         }
+        try {
+            if (resume) {
+                const data = { resume, report, optimizedSections }
+                localStorage.setItem(`resume-data-${conversationId}`, JSON.stringify(data))
+            }
+            // 只在非初始化阶段才清除数据（用户主动清空简历时）
+        } catch (err) {
+            console.error('[ClientChatShell] Failed to save resume:', err)
+        }
+    }, [conversationId, resume, report, optimizedSections])
+    
+    // 每次 mount 都会重新初始化（key={id} 强制卸载再挂载）
+    useEffect(() => {
+        console.log('[ClientChatShell] init effect triggered')
         
-        initializedRef.current = true
+        const targetConvId = initialConversationId || urlConvId
+        console.log('[ClientChatShell] Initial conversationId prop:', initialConversationId)
+        console.log('[ClientChatShell] Target conversation ID to use:', targetConvId)
         
-        console.log('[ClientChatShell] Initializing with conversationId:', initialConversationId)
+        console.log('[ClientChatShell] Initializing with conversationId:', targetConvId)
         console.log('[ClientChatShell] Initial messages count:', initialMessages.length)
         console.log('[ClientChatShell] Local user:', localUser?.email || 'null')
         
         init({
-            initialConversationId,
+            initialConversationId: targetConvId,
             initialMessages: initialMessages as any,
             user: localUser
         })
         
-        console.log('[ClientChatShell] Init completed, store conversationId should be:', initialConversationId)
+        console.log('[ClientChatShell] Init completed, store should have conversationId:', targetConvId)
+        console.log('[Store current conversationId after init]:', conversationId)
+        
+        // 如果 store 的 conversationId 不是目标值，强制更新（可能在 key change 后）
+        if (conversationId !== targetConvId && targetConvId) {
+            console.log('[Init effect] Store conversationId mismatch, updating to:', targetConvId)
+            selectConversation(targetConvId)
+        }
         
         checkAuth().catch(() => {
             // 静默处理，未登录时不打印错误
@@ -143,6 +192,39 @@ export default function ClientChatShell({
             }).catch(console.error)
         }
     }, [conversationId, hasMessages, loadMessages])
+    
+    // 切换对话时，尝试加载该对话关联的简历数据
+    useEffect(() => {
+        if (!conversationId) return
+        
+        // 如果已经在挂载时加载过该对话的简历，跳过
+        if (resumeLoadedForConvRef.current === conversationId) {
+            console.log('[ClientChatShell] Resume already loaded for this conversation, skipping')
+            return
+        }
+        
+        // 从 localStorage 中检查是否有该对话的简历数据
+        try {
+            const saved = localStorage.getItem(`resume-data-${conversationId}`)
+            if (saved) {
+                const data = JSON.parse(saved)
+                setResume(data.resume)
+                setReport(data.report)
+                setOptimizedSections(data.optimizedSections || {})
+            } else {
+                // 该对话没有简历数据，清空面板
+                setResume(null)
+                setReport(null)
+                setOptimizedSections({})
+            }
+            resumeLoadedForConvRef.current = conversationId
+        } catch (err) {
+            console.error('[ClientChatShell] Failed to load resume for conversation:', err)
+            setResume(null)
+            setReport(null)
+            setOptimizedSections({})
+        }
+    }, [conversationId])
     
     const currentConversation = getConversationById(conversationId)
     const conversationType = currentConversation?.type || initialConversationType
@@ -170,6 +252,13 @@ export default function ClientChatShell({
     
     const handleLogout = useCallback(async () => {
         await fetch("/api/auth/logout", { method: "POST" })
+        // 清除所有对话的简历缓存
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('resume-data-')) {
+                localStorage.removeItem(key)
+            }
+        })
+        // 兼容旧版全局 key
         localStorage.removeItem('resume-data')
         window.location.href = "/"
     }, [])
@@ -192,49 +281,58 @@ export default function ClientChatShell({
     }, [])
 
     // Callback to bridge Message -> RightPanel
-    const handleApplyOptimization = useCallback((key: string, content: string) => {
-        console.log('[ClientChatShell] Applying optimization:', key)
-        console.log('[ClientChatShell] Content preview:', content.substring(0, 100))
+    const handleApplyOptimization = useCallback((key: string, aiContent: string, userOriginal: string) => {
+        console.log('[ClientChatShell] Applying optimization:', { key, userOriginalLen: userOriginal.length, aiContentLen: aiContent.length })
         
-        // 提取 AI 回复中"## 项目描述"部分的内容
-        let extractedDescription = content
-        const descriptionMatch = content.match(/## 项目描述\s*\n([\s\S]*?)(?=\n## |\n### |$)/)
-        if (descriptionMatch) {
-            extractedDescription = descriptionMatch[1].trim()
-        }
-        
-        // 尝试找到要替换的目标项目
+        // 用用户原始消息在简历中查找匹配的段落
         let targetProjectIndex: number | undefined = undefined
-        
-        // 尝试从 content 中提取项目名称
-        const projectNameMatch = content.match(/## 项目名称\s*\n\s*(.*)/)
-        if (projectNameMatch && resume?.projects) {
-            const mentionedProjectName = projectNameMatch[1].trim()
-            
-            // 查找最相似的项目
+        let originalDescription = userOriginal
+
+        if (userOriginal && resume?.projects) {
+            // 在简历项目中查找与用户消息最匹配的段落
             for (let i = 0; i < resume.projects.length; i++) {
                 const project = resume.projects[i]
-                if (project.name && (
-                    project.name.includes(mentionedProjectName) ||
-                    mentionedProjectName.includes(project.name)
-                )) {
+                const desc = project.description || ''
+                // 精确包含或高重叠度匹配
+                if (desc && (desc.includes(userOriginal) || userOriginal.includes(desc))) {
                     targetProjectIndex = i
+                    originalDescription = desc
                     break
                 }
             }
+            // 如果没有完全匹配，尝试按关键词相似度匹配
+            if (targetProjectIndex === undefined) {
+                let bestScore = 0
+                for (let i = 0; i < resume.projects.length; i++) {
+                    const project = resume.projects[i]
+                    const desc = project.description || ''
+                    if (!desc) continue
+                    // 计算共同词数
+                    const userWords = new Set(userOriginal.split(/\s+|[，。、；]/).filter((w: string) => w.length > 1))
+                    const descWords = new Set(desc.split(/\s+|[，。、；]/).filter((w: string) => w.length > 1))
+                    let common = 0
+                    userWords.forEach(w => { if (descWords.has(w)) common++ })
+                    const score = common / Math.max(userWords.size, 1)
+                    if (score > bestScore && score > 0.3) {
+                        bestScore = score
+                        targetProjectIndex = i
+                        originalDescription = desc
+                    }
+                }
+            }
         }
-        
-        // 如果没有找到匹配的项目，默认第一个项目
-        if (targetProjectIndex === undefined && resume?.projects && resume.projects.length > 0) {
+
+        // 默认第一个项目
+        if (targetProjectIndex === undefined && resume?.projects?.length > 0) {
             targetProjectIndex = 0
+            originalDescription = resume.projects[0].description || ''
         }
-        
-        // 设置待审核的优化内容并打开对话框
+
         setPendingOptimization({
             key,
-            originalContent: '',  // 不再需要，直接从 resume 读取
-            optimizedContent: content,
-            extractedDescription,
+            originalContent: originalDescription,
+            optimizedContent: aiContent,
+            extractedDescription: aiContent,
             targetProjectIndex
         })
         setShowReviewModal(true)
@@ -251,7 +349,13 @@ export default function ClientChatShell({
     const handleDeleteConversation = useCallback(async (id: string) => {
         console.log('[ClientChatShell] Deleting conversation:', id)
         try {
-            const res = await fetch(`/api/conversations?id=${id}`, { method: 'DELETE' })
+            // 503（健康检查快速失败）时自动重试一次，避免瞬时服务抖动导致删除失败
+            let res = await fetch(`/api/conversations?id=${id}`, { method: 'DELETE' })
+            if (res.status === 503) {
+                console.warn('[ClientChatShell] Got 503, retrying after 1s...')
+                await new Promise(r => setTimeout(r, 1000))
+                res = await fetch(`/api/conversations?id=${id}`, { method: 'DELETE' })
+            }
             console.log('[ClientChatShell] Delete response:', res.status)
             
             if (res.ok) {
@@ -298,10 +402,13 @@ export default function ClientChatShell({
                 onSelectConversation={handleSelectConversation}
                 onDeleteConversation={handleDeleteConversation}
                 onLogout={handleLogout}
+                isLogin={!!localUser}
+                onShowAuth={() => setShowAuth(true)}
             />
             
             <div className="flex-1 flex flex-col min-w-0">
                 <ChatPanel
+                    key={conversationId}
                     conversationId={conversationId}
                     conversationType={conversationType}
                     initialMessages={getMessages(conversationId) || []}
@@ -311,7 +418,7 @@ export default function ClientChatShell({
                     setMode={setMode}
                     resume={resume}
                     report={report}
-                    onApplySectionOptimization={handleApplyOptimization}  // 新增
+                    onApplySectionOptimization={handleApplyOptimization}
                 />
             </div>
             
@@ -349,6 +456,7 @@ export default function ClientChatShell({
                     resume={resume}
                     optimizedContent={pendingOptimization.optimizedContent}
                     extractedDescription={pendingOptimization.extractedDescription}
+                    originalContent={pendingOptimization.originalContent}
                     targetProjectIndex={pendingOptimization.targetProjectIndex}
                     onAccept={(content) => {
                         console.log('[ClientChatShell] User accepted optimization')

@@ -38,6 +38,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
+    "html2pdf.js": "^0.14.0",
     "json5": "^2.2.3",
     "lucide-react": "^1.24.0",
     "mammoth": "^1.6.0",

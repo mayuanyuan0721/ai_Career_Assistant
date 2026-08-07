@@ -1,9 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
+import withTimeout from "@/lib/timeout";
 
 export async function POST(req: Request) {
     const supabase = await createClient();
     const { content, filename, conversationId } = await req.json();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authResult = await withTimeout(
+        supabase.auth.getUser(),
+        5000,
+        { data: { user: null }, error: null } as any
+    );
+    const { data: { user } } = authResult;
     if (!user) {
         return Response.json({ error: "未登录" }, { status: 401 });
     }
